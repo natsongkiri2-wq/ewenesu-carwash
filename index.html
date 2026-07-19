@@ -117,14 +117,25 @@ body {
 .input.plate { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+/* ── ATTENDANT CHIPS ─────────────────────────────── */
+.attendant-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.attendant-chip {
+  padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  border: 1.5px solid var(--border); background: var(--bg); color: var(--text2);
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.attendant-chip.active { background: var(--green); border-color: var(--green); color: #fff; }
+.attendant-chip.add-new { border-style: dashed; color: var(--green-mid); }
+.attendant-empty-hint { font-size: 12px; color: var(--text3); }
+
 /* ── SERVICE ROWS ────────────────────────────────── */
 .svc-row {
-  display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
   border: 1.5px solid var(--border); background: var(--bg);
   transition: all 0.15s;
 }
 .svc-row.active { border-color: var(--svc-color); background: color-mix(in srgb, var(--svc-color) 8%, white); }
+.svc-main { display: flex; align-items: center; gap: 10px; }
 .svc-icon { font-size: 17px; flex-shrink: 0; width: 22px; }
 .svc-label { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); transition: color 0.15s; line-height: 1.3; }
 .svc-row.active .svc-label { color: var(--svc-color); font-weight: 600; }
@@ -138,6 +149,13 @@ body {
 }
 .svc-row.active .svc-input { border-color: var(--svc-color); color: var(--svc-color); }
 .svc-input:focus { outline: none; }
+.svc-presets { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; padding-left: 32px; }
+.preset-chip {
+  padding: 5px 11px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  font-family: 'Syne', sans-serif; border: 1.5px solid var(--border); background: white;
+  color: var(--text2); cursor: pointer; transition: all 0.12s;
+}
+.preset-chip.selected { background: var(--svc-color); border-color: var(--svc-color); color: #fff; }
 
 /* ── TOTAL ───────────────────────────────────────── */
 .total-bar {
@@ -225,6 +243,16 @@ body {
 .stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
 .stat-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--green); }
 
+/* ── STAFF BREAKDOWN ─────────────────────────────── */
+.staff-breakdown-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 4px; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.staff-breakdown-row:last-child { border-bottom: none; }
+.staff-breakdown-name { font-weight: 600; color: var(--text); }
+.staff-breakdown-meta { color: var(--text3); font-size: 11px; margin-left: 6px; }
+.staff-breakdown-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--green); }
+
 /* ── ENTRY LIST ──────────────────────────────────── */
 .entry-card {
   background: var(--card); border: 1px solid var(--border);
@@ -241,6 +269,7 @@ body {
 .tag-time { background: var(--bg); color: var(--text2); }
 .tag-paid { background: #FFF8E1; color: #E65100; }
 .tag-date { background: #E8EAF6; color: #283593; font-size: 10px; }
+.tag-staff { background: #F3E5F5; color: #6A1B9A; }
 
 .empty-state { text-align: center; padding: 50px 20px; color: var(--text2); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
@@ -308,6 +337,11 @@ body {
     </div>
 
     <div class="card">
+      <div class="card-title">Attendant</div>
+      <div class="attendant-row" id="attendantRow"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">Services & Amounts (VT)</div>
       <div id="servicesContainer"></div>
     </div>
@@ -355,6 +389,12 @@ body {
       </div>
     </div>
 
+    <!-- Staff breakdown -->
+    <div class="card hidden" id="staffCard">
+      <div class="card-title">By Attendant (Pending Entries)</div>
+      <div id="staffBreakdown"></div>
+    </div>
+
     <!-- Actions -->
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
       ⬇ Download Updated Register
@@ -381,19 +421,30 @@ body {
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'ewenesu_entries';
+const STAFF_KEY    = 'ewenesu_staff';
+
+// Default preset prices per service (VT). These are just starting points so
+// the app is usable immediately — edit the numbers below to match your
+// actual price list if they don't line up with what you charge.
 const SERVICES = [
-  { key: "full_wash",        label: "Full Wash & Interior Clean", icon: "🚿", color: "#0B5E45" },
-  { key: "exterior_wash",    label: "Exterior Wash Only",         icon: "💧", color: "#1565C0" },
-  { key: "interior_clean",   label: "Interior Clean Only",        icon: "🪣", color: "#5E35B1" },
-  { key: "tire_clean",       label: "Tire Clean Only",            icon: "⚙️", color: "#E65100" },
-  { key: "vaccume",          label: "Vacuum",                     icon: "🌀", color: "#00695C" },
-  { key: "interior_polish",  label: "Interior Polish",            icon: "✨", color: "#AD1457" },
-  { key: "wheel_polish",     label: "Wheel Polish",               icon: "🔩", color: "#283593" },
+  { key: "full_wash",        label: "Full Wash & Interior Clean", icon: "🚿", color: "#0B5E45", presets: [1000, 1500, 2000] },
+  { key: "exterior_wash",    label: "Exterior Wash Only",         icon: "💧", color: "#1565C0", presets: [500, 800, 1000] },
+  { key: "interior_clean",   label: "Interior Clean Only",        icon: "🪣", color: "#5E35B1", presets: [500, 800, 1000] },
+  { key: "tire_clean",       label: "Tire Clean Only",            icon: "⚙️", color: "#E65100", presets: [300, 500, 700] },
+  { key: "vaccume",          label: "Vacuum",                     icon: "🌀", color: "#00695C", presets: [300, 500, 700] },
+  { key: "interior_polish",  label: "Interior Polish",            icon: "✨", color: "#AD1457", presets: [500, 1000, 1500] },
+  { key: "wheel_polish",     label: "Wheel Polish",               icon: "🔩", color: "#283593", presets: [500, 800, 1000] },
 ];
+
+// Starter attendant list is empty — tap "+ Add" in the app to add real
+// names. The list is saved on the device so this only needs doing once.
+const DEFAULT_STAFF = [];
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let entries = loadEntries();
+let staff = loadStaff();
 let xlsxData = null;
+let selectedAttendant = '';
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 const now = new Date();
@@ -419,16 +470,25 @@ SERVICES.forEach(svc => {
   row.className = 'svc-row';
   row.id = `row_${svc.key}`;
   row.style.setProperty('--svc-color', svc.color);
+  const presetChips = svc.presets.map(p =>
+    `<button type="button" class="preset-chip" data-price="${p}" onclick="applyPreset('${svc.key}', ${p})">VT ${p.toLocaleString()}</button>`
+  ).join('');
   row.innerHTML = `
-    <span class="svc-icon">${svc.icon}</span>
-    <span class="svc-label">${svc.label}</span>
-    <div class="svc-right">
-      <span class="svc-currency">VT</span>
-      <input class="svc-input" id="svc_${svc.key}" type="number"
-        placeholder="0" min="0" step="50" inputmode="numeric" oninput="onSvcInput(this,'${svc.key}')">
-    </div>`;
+    <div class="svc-main">
+      <span class="svc-icon">${svc.icon}</span>
+      <span class="svc-label">${svc.label}</span>
+      <div class="svc-right">
+        <span class="svc-currency">VT</span>
+        <input class="svc-input" id="svc_${svc.key}" type="number"
+          placeholder="0" min="0" step="50" inputmode="numeric" oninput="onSvcInput(this,'${svc.key}')">
+      </div>
+    </div>
+    <div class="svc-presets">${presetChips}</div>`;
   container.appendChild(row);
 });
+
+// Build attendant chips
+renderAttendantChips();
 
 // ── PERSISTENCE ───────────────────────────────────────────────────────────────
 function loadEntries() {
@@ -437,6 +497,64 @@ function loadEntries() {
 }
 function saveEntries() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+function loadStaff() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STAFF_KEY));
+    return Array.isArray(s) ? s : [...DEFAULT_STAFF];
+  } catch { return [...DEFAULT_STAFF]; }
+}
+function saveStaff() {
+  localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
+}
+
+// ── ATTENDANT UI ──────────────────────────────────────────────────────────────
+function renderAttendantChips() {
+  const row = document.getElementById('attendantRow');
+  const chips = staff.map(name =>
+    `<button type="button" class="attendant-chip ${name === selectedAttendant ? 'active' : ''}" onclick="selectAttendant('${escapeAttr(name)}')">${name}</button>`
+  ).join('');
+  const hint = staff.length === 0
+    ? `<span class="attendant-empty-hint">No attendants yet — tap "+ Add" to set up your team</span><br>`
+    : '';
+  row.innerHTML = hint + chips + `<button type="button" class="attendant-chip add-new" onclick="addAttendant()">+ Add</button>`;
+}
+function escapeAttr(s) { return s.replace(/'/g, "\\'"); }
+function selectAttendant(name) {
+  selectedAttendant = (selectedAttendant === name) ? '' : name;
+  renderAttendantChips();
+}
+function addAttendant() {
+  const name = prompt('Attendant name:');
+  if (!name) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  if (!staff.includes(trimmed)) {
+    staff.push(trimmed);
+    saveStaff();
+  }
+  selectedAttendant = trimmed;
+  renderAttendantChips();
+}
+
+// ── PRESET CHIPS ──────────────────────────────────────────────────────────────
+function applyPreset(key, price) {
+  const input = document.getElementById(`svc_${key}`);
+  const current = parseFloat(input.value);
+  if (current === price) {
+    // tapping the already-selected preset clears it
+    input.value = '';
+  } else {
+    input.value = price;
+  }
+  onSvcInput(input, key);
+}
+function syncPresetSelection(key) {
+  const row = document.getElementById(`row_${key}`);
+  const val = parseFloat(document.getElementById(`svc_${key}`).value);
+  row.querySelectorAll('.preset-chip').forEach(chip => {
+    chip.classList.toggle('selected', Number(chip.dataset.price) === val);
+  });
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -449,6 +567,7 @@ function getTotal() {
 function onSvcInput(input, key) {
   const active = input.value !== '' && Number(input.value) > 0;
   document.getElementById(`row_${key}`).classList.toggle('active', active);
+  syncPresetSelection(key);
   updateTotal();
 }
 
@@ -474,7 +593,29 @@ function updateDashboard() {
   if (entries.length > 0) { badge.textContent = entries.length; badge.classList.remove('hidden'); }
   else badge.classList.add('hidden');
 
+  renderStaffBreakdown();
   renderEntryList();
+}
+
+function renderStaffBreakdown() {
+  const card = document.getElementById('staffCard');
+  const withStaff = entries.filter(e => e.attendant);
+  if (withStaff.length === 0) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+
+  const byStaff = {};
+  withStaff.forEach(e => {
+    if (!byStaff[e.attendant]) byStaff[e.attendant] = { total: 0, count: 0 };
+    byStaff[e.attendant].total += e.total_services;
+    byStaff[e.attendant].count += 1;
+  });
+
+  const rows = Object.entries(byStaff).sort((a, b) => b[1].total - a[1].total);
+  document.getElementById('staffBreakdown').innerHTML = rows.map(([name, d]) => `
+    <div class="staff-breakdown-row">
+      <span class="staff-breakdown-name">${name}<span class="staff-breakdown-meta">${d.count} wash${d.count !== 1 ? 'es' : ''}</span></span>
+      <span class="staff-breakdown-total">VT ${d.total.toLocaleString()}</span>
+    </div>`).join('');
 }
 
 function renderEntryList() {
@@ -505,6 +646,7 @@ function renderEntryList() {
       <div class="entry-tags">
         <span class="tag tag-date">${e.date}</span>
         ${e.time ? `<span class="tag tag-time">${e.time}</span>` : ''}
+        ${e.attendant ? `<span class="tag tag-staff">👤 ${e.attendant}</span>` : ''}
         ${e.paid ? `<span class="tag tag-paid">Paid VT ${Number(e.paid).toLocaleString()}</span>` : ''}
         ${tags}
       </div>
@@ -522,6 +664,7 @@ function switchView(v) {
   } else {
     document.querySelectorAll('.tab')[1].classList.add('active');
     document.getElementById('viewSync').classList.add('active');
+    renderStaffBreakdown();
     renderEntryList();
   }
 }
@@ -555,6 +698,7 @@ function handleSave() {
 
   const entry = {
     date: todayStr(), plate, brand, model, time,
+    attendant: selectedAttendant,
     ...svcVals,
     total_services: total,
     paid,
@@ -575,7 +719,10 @@ function resetForm() {
   SERVICES.forEach(s => {
     document.getElementById(`svc_${s.key}`).value = '';
     document.getElementById(`row_${s.key}`).classList.remove('active');
+    syncPresetSelection(s.key);
   });
+  // Attendant selection is intentionally kept — the same person usually
+  // logs several washes in a row. Tap their chip again to deselect.
   updateTotal();
 }
 
@@ -621,20 +768,25 @@ function buildAndDownload() {
       ws['F2'] = { v: 'Car Wash Services', t: 's' };
       ws['M2'] = { v: 'Total Services', t: 's' };
       ws['N2'] = { v: 'Paid', t: 's' };
+      ws['O2'] = { v: 'Attendant', t: 's' };
       const hdrs = {
         B:'Date', C:'Plate No.', D:'Description', E:'Time',
         F:'Full Wash & Interior Clean', G:'Exterior Wash Only',
         H:'Interior Clean Only', I:'Tire Clean Only',
         J:'Vaccume', K:'Interior Polish', L:'Wheel Polish',
-        M:'Total Services', N:'Paid'
+        M:'Total Services', N:'Paid', O:'Attendant'
       };
       Object.entries(hdrs).forEach(([col, val]) => ws[`${col}3`] = { v: val, t: 's' });
-      ws['!ref'] = 'A1:N3';
+      ws['!ref'] = 'A1:O3';
       XLSX.utils.book_append_sheet(wb, ws, 'Main Register');
     }
 
     const ws = wb.Sheets['Main Register'];
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:N3');
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:O3');
+
+    // Make sure an Attendant header exists in column O even when appending
+    // to an older file saved before this field existed.
+    if (!ws['O3']) ws['O3'] = { v: 'Attendant', t: 's' };
 
     // Find last row with data in col B (Date column, index 1)
     let insertRow = 3;
@@ -665,6 +817,7 @@ function buildAndDownload() {
         11: val(e.wheel_polish),     // L Wheel Polish
         12: e.total_services ? { v: e.total_services, t: 'n' } : null, // M Total Services
         13: e.paid ? { v: e.paid, t: 'n' } : null,                  // N Paid
+        14: e.attendant ? { v: e.attendant, t: 's' } : null,        // O Attendant
       };
 
       Object.entries(row).forEach(([cIdx, cell]) => {
@@ -679,7 +832,7 @@ function buildAndDownload() {
     const newEndRow = insertRow + entries.length - 1;
     ws['!ref'] = XLSX.utils.encode_range({
       s: { r: 0, c: 0 },
-      e: { r: Math.max(range.e.r, newEndRow), c: 13 }
+      e: { r: Math.max(range.e.r, newEndRow), c: 14 }
     });
 
     const dateStr = new Date().toISOString().split('T')[0];
