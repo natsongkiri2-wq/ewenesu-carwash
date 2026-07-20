@@ -294,6 +294,22 @@ body {
 .staff-breakdown-meta { color: var(--text3); font-size: 11px; margin-left: 6px; }
 .staff-breakdown-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--green); }
 
+/* ── ATTENDANCE WEEKLY BREAKDOWN (per person, per day) ───────────── */
+.att-summary-person { margin-bottom: 16px; }
+.att-summary-person:last-child { margin-bottom: 0; }
+.att-summary-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 4px; border-bottom: 2px solid var(--purple-pale);
+}
+.att-summary-name { font-weight: 700; color: var(--text); font-size: 13px; }
+.att-summary-days { color: var(--text3); font-size: 11px; margin-left: 6px; font-weight: 500; }
+.att-summary-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--purple); font-size: 15px; }
+.att-day-row { padding: 8px 4px 8px 14px; border-bottom: 1px dashed var(--border); }
+.att-day-row:last-child { border-bottom: none; }
+.att-day-top { display: flex; justify-content: space-between; align-items: center; }
+.att-day-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--green); font-size: 13px; }
+.att-day-detail { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
 /* ── ENTRY LIST ──────────────────────────────────── */
 .entry-card {
   background: var(--card); border: 1px solid var(--border);
@@ -829,28 +845,44 @@ function handleSaveAttendance() {
 
 function getAttendanceSummary() {
   const byStaff = {};
-  Object.values(attendance).forEach(dayObj => {
+  Object.entries(attendance).forEach(([date, dayObj]) => {
     Object.entries(dayObj).forEach(([name, rec]) => {
-      if (!byStaff[name]) byStaff[name] = { days: 0, pay: 0 };
+      if (!byStaff[name]) byStaff[name] = { days: 0, pay: 0, breakdown: [] };
+      const salary = Number(rec.salary) || 0;
+      const bonus = Number(rec.bonus) || 0;
       byStaff[name].days += 1;
-      byStaff[name].pay += (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
+      byStaff[name].pay += salary + bonus;
+      byStaff[name].breakdown.push({ date, salary, bonus, total: salary + bonus });
     });
   });
+  Object.values(byStaff).forEach(d => d.breakdown.sort((a, b) => a.date.localeCompare(b.date)));
   return Object.entries(byStaff).sort((a, b) => b[1].pay - a[1].pay);
+}
+
+function renderAttendanceSummaryHTML(rows) {
+  if (rows.length === 0) return null;
+  return rows.map(([name, d]) => `
+    <div class="att-summary-person">
+      <div class="att-summary-header">
+        <span class="att-summary-name">${name}<span class="att-summary-days">${d.days} day${d.days !== 1 ? 's' : ''}</span></span>
+        <span class="att-summary-total">VT ${Math.round(d.pay).toLocaleString()}</span>
+      </div>
+      ${d.breakdown.map(b => `
+        <div class="att-day-row">
+          <div class="att-day-top">
+            <span class="tag tag-date">${b.date}</span>
+            <span class="att-day-total">VT ${b.total.toLocaleString()}</span>
+          </div>
+          <div class="att-day-detail">Salary VT ${b.salary.toLocaleString()} · Bonus VT ${b.bonus.toLocaleString()}</div>
+        </div>`).join('')}
+    </div>`).join('');
 }
 
 function renderAttWeekSummary() {
   const rows = getAttendanceSummary();
   const el = document.getElementById('attWeekSummary');
-  if (rows.length === 0) {
-    el.innerHTML = `<p style="font-size:13px;color:var(--text3);">No attendance recorded yet this week.</p>`;
-    return;
-  }
-  el.innerHTML = rows.map(([name, d]) => `
-    <div class="staff-breakdown-row">
-      <span class="staff-breakdown-name">${name}<span class="staff-breakdown-meta">${d.days} day${d.days !== 1 ? 's' : ''}</span></span>
-      <span class="staff-breakdown-total">VT ${Math.round(d.pay).toLocaleString()}</span>
-    </div>`).join('');
+  el.innerHTML = renderAttendanceSummaryHTML(rows) ||
+    `<p style="font-size:13px;color:var(--text3);">No attendance recorded yet this week.</p>`;
 }
 
 function renderAttLog() {
@@ -1083,13 +1115,10 @@ function renderWeeklyStats() {
 function renderWeeklyAttSummary() {
   const card = document.getElementById('weeklyAttCard');
   const rows = getAttendanceSummary();
-  if (rows.length === 0) { card.classList.add('hidden'); return; }
+  const html = renderAttendanceSummaryHTML(rows);
+  if (!html) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
-  document.getElementById('weeklyAttSummary').innerHTML = rows.map(([name, d]) => `
-    <div class="staff-breakdown-row">
-      <span class="staff-breakdown-name">${name}<span class="staff-breakdown-meta">${d.days} day${d.days !== 1 ? 's' : ''}</span></span>
-      <span class="staff-breakdown-total">VT ${Math.round(d.pay).toLocaleString()}</span>
-    </div>`).join('');
+  document.getElementById('weeklyAttSummary').innerHTML = html;
 }
 
 function renderWeeklyExpSummary() {
