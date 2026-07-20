@@ -78,11 +78,12 @@ body {
 /* ── TABS ────────────────────────────────────────── */
 .tabs { display: flex; gap: 4px; margin-top: 4px; }
 .tab {
-  flex: 1; padding: 10px 8px;
-  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+  flex: 1; padding: 10px 4px;
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
   border: none; cursor: pointer; border-radius: 12px 12px 0 0;
   transition: all 0.2s;
   background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75);
+  white-space: nowrap;
 }
 .tab.active { background: var(--bg); color: var(--green); }
 
@@ -314,8 +315,9 @@ body {
       </div>
     </div>
     <div class="tabs">
-      <button class="tab active" onclick="switchView('form')">New Entry</button>
-      <button class="tab" id="syncTab" onclick="switchView('sync')">
+      <button class="tab active" data-tab="form" onclick="switchView('form')">New Entry</button>
+      <button class="tab" data-tab="attendance" onclick="switchView('attendance')">Attendance</button>
+      <button class="tab" data-tab="sync" onclick="switchView('sync')">
         End of Day
         <span class="pending-badge hidden" id="pendingBadge">0</span>
       </button>
@@ -345,18 +347,6 @@ body {
         <label>Time</label>
         <input class="input" id="timeInput" type="text" placeholder="e.g. 9:00am" autocomplete="off">
       </div>
-    </div>
-
-    <div class="team-bar" id="teamBar">
-      <span>👥</span>
-      <span class="team-bar-names" id="teamBarNames">No team set for today</span>
-      <button type="button" class="team-bar-edit" onclick="toggleTeamEditor()">Edit</button>
-    </div>
-
-    <div class="card hidden" id="teamCard">
-      <div class="card-title">Today's Team</div>
-      <div class="attendant-row" id="attendantRow"></div>
-      <div class="team-hint" style="font-size:12px;color:var(--text2);margin-top:10px;line-height:1.4;">Select everyone working today. This is set once and applied to every entry — no need to pick attendants per wash.</div>
     </div>
 
     <div class="card">
@@ -407,12 +397,6 @@ body {
       </div>
     </div>
 
-    <!-- Staff breakdown -->
-    <div class="card hidden" id="staffCard">
-      <div class="card-title">By Attendant (Pending Entries)</div>
-      <div id="staffBreakdown"></div>
-    </div>
-
     <!-- Actions -->
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
       ⬇ Download Updated Register
@@ -432,6 +416,39 @@ body {
     </div>
 
   </div>
+
+  <!-- ATTENDANCE VIEW -->
+  <div class="body view" id="viewAttendance">
+
+    <div class="team-bar">
+      <button type="button" class="team-bar-edit" onclick="shiftAttDate(-1)">‹ Prev</button>
+      <span class="team-bar-names" id="attDateLabel" style="text-align:center;">Today</span>
+      <button type="button" class="team-bar-edit" onclick="shiftAttDate(1)">Next ›</button>
+    </div>
+    <button type="button" class="attendant-chip" id="attTodayBtn" onclick="jumpAttToday()" style="margin-bottom:12px;display:none;">Jump to Today</button>
+
+    <div class="card">
+      <div class="card-title" id="attCardTitle">Present — Today</div>
+      <div class="attendant-row" id="attChipsRow"></div>
+      <div style="font-size:12px;color:var(--text2);margin-top:10px;line-height:1.4;">Tap a name to mark them present or absent for this date. Salaries are calculated separately using these records, since rates differ per person.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">This Month — Days Present</div>
+      <div id="attMonthSummary">
+        <p style="font-size:13px;color:var(--text3);">No attendance recorded yet this month.</p>
+      </div>
+    </div>
+
+    <div class="section-header">Recent Attendance</div>
+    <div id="attLog">
+      <div class="empty-state">
+        <div class="empty-icon">🗓️</div>
+        <strong>No attendance recorded yet</strong>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -440,6 +457,7 @@ body {
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'ewenesu_entries';
 const STAFF_KEY    = 'ewenesu_staff';
+const ATTENDANCE_KEY = 'ewenesu_attendance';
 
 // Default preset prices per service (VT). These are just starting points so
 // the app is usable immediately — edit the numbers below to match your
@@ -461,9 +479,9 @@ const DEFAULT_STAFF = [];
 // ── STATE ────────────────────────────────────────────────────────────────────
 let entries = loadEntries();
 let staff = loadStaff();
+let attendance = loadAttendance();
 let xlsxData = null;
-let todaysTeam = loadTodaysTeam();
-let teamEditorOpen = todaysTeam.length === 0;
+let selectedAttDate = todayStr();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 const now = new Date();
@@ -506,10 +524,11 @@ SERVICES.forEach(svc => {
   container.appendChild(row);
 });
 
-// Build attendant chips + team bar
-renderAttendantChips();
-renderTeamBar();
-document.getElementById('teamCard').classList.toggle('hidden', !teamEditorOpen);
+// Build attendance tab
+renderAttDateLabel();
+renderAttChips();
+renderAttMonthSummary();
+renderAttLog();
 
 // ── PERSISTENCE ───────────────────────────────────────────────────────────────
 function loadEntries() {
@@ -528,49 +547,70 @@ function loadStaff() {
 function saveStaff() {
   localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
 }
-function teamKeyForToday() {
-  return `ewenesu_team_${todayStr()}`;
-}
-function loadTodaysTeam() {
+function loadAttendance() {
   try {
-    const t = JSON.parse(localStorage.getItem(teamKeyForToday()));
-    return Array.isArray(t) ? t : [];
-  } catch { return []; }
+    const a = JSON.parse(localStorage.getItem(ATTENDANCE_KEY));
+    return (a && typeof a === 'object') ? a : {};
+  } catch { return {}; }
 }
-function saveTodaysTeam() {
-  localStorage.setItem(teamKeyForToday(), JSON.stringify(todaysTeam));
+function saveAttendance() {
+  localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(attendance));
 }
 
-// ── TEAM-OF-THE-DAY UI ──────────────────────────────────────────────────────────
-function renderTeamBar() {
-  const namesEl = document.getElementById('teamBarNames');
-  namesEl.textContent = todaysTeam.length > 0
-    ? todaysTeam.join(', ')
-    : 'No team set for today';
+// ── ATTENDANCE TAB ──────────────────────────────────────────────────────────────
+function escapeAttr(s) { return s.replace(/'/g, "\\'"); }
+
+function fmtAttDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
 }
-function toggleTeamEditor() {
-  teamEditorOpen = !teamEditorOpen;
-  document.getElementById('teamCard').classList.toggle('hidden', !teamEditorOpen);
+
+function renderAttDateLabel() {
+  const isToday = selectedAttDate === todayStr();
+  document.getElementById('attDateLabel').textContent = fmtAttDate(selectedAttDate) + (isToday ? ' (Today)' : '');
+  document.getElementById('attCardTitle').textContent = 'Present — ' + (isToday ? 'Today' : fmtAttDate(selectedAttDate));
+  document.getElementById('attTodayBtn').style.display = isToday ? 'none' : 'block';
 }
-function renderAttendantChips() {
-  const row = document.getElementById('attendantRow');
+
+function shiftAttDate(delta) {
+  const d = new Date(selectedAttDate + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  selectedAttDate = d.toISOString().split('T')[0];
+  renderAttDateLabel();
+  renderAttChips();
+}
+
+function jumpAttToday() {
+  selectedAttDate = todayStr();
+  renderAttDateLabel();
+  renderAttChips();
+}
+
+function renderAttChips() {
+  const row = document.getElementById('attChipsRow');
+  const present = attendance[selectedAttDate] || [];
   const chips = staff.map(name =>
-    `<button type="button" class="attendant-chip ${todaysTeam.includes(name) ? 'active' : ''}" onclick="toggleTeamMember('${escapeAttr(name)}')">${name}</button>`
+    `<button type="button" class="attendant-chip ${present.includes(name) ? 'active' : ''}" onclick="toggleAttendance('${escapeAttr(name)}')">${name}</button>`
   ).join('');
   const hint = staff.length === 0
     ? `<span class="attendant-empty-hint">No attendants yet — tap "+ Add" to set up your team</span>`
     : '';
   row.innerHTML = hint + chips + `<button type="button" class="attendant-chip add-new" onclick="addAttendant()">+ Add</button>`;
 }
-function escapeAttr(s) { return s.replace(/'/g, "\\'"); }
-function toggleTeamMember(name) {
-  const idx = todaysTeam.indexOf(name);
-  if (idx === -1) todaysTeam.push(name);
-  else todaysTeam.splice(idx, 1);
-  saveTodaysTeam();
-  renderAttendantChips();
-  renderTeamBar();
+
+function toggleAttendance(name) {
+  const present = attendance[selectedAttDate] ? [...attendance[selectedAttDate]] : [];
+  const idx = present.indexOf(name);
+  if (idx === -1) present.push(name);
+  else present.splice(idx, 1);
+  if (present.length === 0) delete attendance[selectedAttDate];
+  else attendance[selectedAttDate] = present;
+  saveAttendance();
+  renderAttChips();
+  renderAttMonthSummary();
+  renderAttLog();
 }
+
 function addAttendant() {
   const name = prompt('Attendant name:');
   if (!name) return;
@@ -580,12 +620,47 @@ function addAttendant() {
     staff.push(trimmed);
     saveStaff();
   }
-  if (!todaysTeam.includes(trimmed)) {
-    todaysTeam.push(trimmed);
-    saveTodaysTeam();
+  toggleAttendance(trimmed);
+}
+
+function renderAttMonthSummary() {
+  const monthPrefix = selectedAttDate.slice(0, 7); // YYYY-MM
+  const counts = {};
+  Object.entries(attendance).forEach(([date, names]) => {
+    if (!date.startsWith(monthPrefix)) return;
+    names.forEach(name => { counts[name] = (counts[name] || 0) + 1; });
+  });
+  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const el = document.getElementById('attMonthSummary');
+  if (rows.length === 0) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--text3);">No attendance recorded yet this month.</p>`;
+    return;
   }
-  renderAttendantChips();
-  renderTeamBar();
+  el.innerHTML = rows.map(([name, count]) => `
+    <div class="staff-breakdown-row">
+      <span class="staff-breakdown-name">${name}</span>
+      <span class="staff-breakdown-total">${count} day${count !== 1 ? 's' : ''}</span>
+    </div>`).join('');
+}
+
+function renderAttLog() {
+  const el = document.getElementById('attLog');
+  const dates = Object.keys(attendance).sort((a, b) => b.localeCompare(a)).slice(0, 21);
+  if (dates.length === 0) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🗓️</div>
+        <strong>No attendance recorded yet</strong>
+      </div>`;
+    return;
+  }
+  el.innerHTML = dates.map(date => `
+    <div class="entry-card">
+      <div class="entry-tags" style="margin-bottom:2px;">
+        <span class="tag tag-date">${date}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text);font-weight:600;">${attendance[date].join(', ')}</div>
+    </div>`).join('');
 }
 
 // ── PRESET CHIPS ──────────────────────────────────────────────────────────────
@@ -644,40 +719,7 @@ function updateDashboard() {
   if (entries.length > 0) { badge.textContent = entries.length; badge.classList.remove('hidden'); }
   else badge.classList.add('hidden');
 
-  renderStaffBreakdown();
   renderEntryList();
-}
-
-function getEntryTeam(e) {
-  // Supports both the current array format and older single-attendant entries
-  if (Array.isArray(e.team)) return e.team;
-  if (e.attendant) return [e.attendant];
-  return [];
-}
-
-function renderStaffBreakdown() {
-  const card = document.getElementById('staffCard');
-  const withTeam = entries.filter(e => getEntryTeam(e).length > 0);
-  if (withTeam.length === 0) { card.classList.add('hidden'); return; }
-  card.classList.remove('hidden');
-
-  const byStaff = {};
-  withTeam.forEach(e => {
-    const team = getEntryTeam(e);
-    const share = e.total_services / team.length;
-    team.forEach(name => {
-      if (!byStaff[name]) byStaff[name] = { total: 0, count: 0 };
-      byStaff[name].total += share;
-      byStaff[name].count += 1;
-    });
-  });
-
-  const rows = Object.entries(byStaff).sort((a, b) => b[1].total - a[1].total);
-  document.getElementById('staffBreakdown').innerHTML = rows.map(([name, d]) => `
-    <div class="staff-breakdown-row">
-      <span class="staff-breakdown-name">${name}<span class="staff-breakdown-meta">${d.count} wash${d.count !== 1 ? 'es' : ''}</span></span>
-      <span class="staff-breakdown-total">VT ${Math.round(d.total).toLocaleString()}</span>
-    </div>`).join('');
 }
 
 function renderEntryList() {
@@ -696,7 +738,6 @@ function renderEntryList() {
       `<span class="tag" style="background:${s.color}18;color:${s.color}">${s.icon} VT ${Number(e[s.key]).toLocaleString()}</span>`
     ).join('');
     const desc = [e.brand, e.model].filter(Boolean).join(' ');
-    const team = getEntryTeam(e);
     return `
     <div class="entry-card">
       <div class="entry-top">
@@ -709,7 +750,6 @@ function renderEntryList() {
       <div class="entry-tags">
         <span class="tag tag-date">${e.date}</span>
         ${e.time ? `<span class="tag tag-time">${e.time}</span>` : ''}
-        ${team.length ? `<span class="tag tag-staff">👥 ${team.join(', ')}</span>` : ''}
         ${e.paid ? `<span class="tag tag-paid">Paid VT ${Number(e.paid).toLocaleString()}</span>` : ''}
         ${tags}
       </div>
@@ -721,13 +761,18 @@ function renderEntryList() {
 function switchView(v) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${v}"]`).classList.add('active');
+
   if (v === 'form') {
-    document.querySelectorAll('.tab')[0].classList.add('active');
     document.getElementById('viewForm').classList.add('active');
+  } else if (v === 'attendance') {
+    document.getElementById('viewAttendance').classList.add('active');
+    renderAttDateLabel();
+    renderAttChips();
+    renderAttMonthSummary();
+    renderAttLog();
   } else {
-    document.querySelectorAll('.tab')[1].classList.add('active');
     document.getElementById('viewSync').classList.add('active');
-    renderStaffBreakdown();
     renderEntryList();
   }
 }
@@ -761,7 +806,6 @@ function handleSave() {
 
   const entry = {
     date: todayStr(), plate, brand, model, time,
-    team: [...todaysTeam],
     ...svcVals,
     total_services: total,
     paid,
@@ -829,25 +873,20 @@ function buildAndDownload() {
       ws['F2'] = { v: 'Car Wash Services', t: 's' };
       ws['M2'] = { v: 'Total Services', t: 's' };
       ws['N2'] = { v: 'Paid', t: 's' };
-      ws['O2'] = { v: 'Attendant', t: 's' };
       const hdrs = {
         B:'Date', C:'Plate No.', D:'Description', E:'Time',
         F:'Full Wash & Interior Clean', G:'Exterior Wash Only',
         H:'Interior Clean Only', I:'Tire Clean Only',
         J:'Vaccume', K:'Interior Polish', L:'Wheel Polish',
-        M:'Total Services', N:'Paid', O:'Attendant'
+        M:'Total Services', N:'Paid'
       };
       Object.entries(hdrs).forEach(([col, val]) => ws[`${col}3`] = { v: val, t: 's' });
-      ws['!ref'] = 'A1:O3';
+      ws['!ref'] = 'A1:N3';
       XLSX.utils.book_append_sheet(wb, ws, 'Main Register');
     }
 
     const ws = wb.Sheets['Main Register'];
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:O3');
-
-    // Make sure an Attendant header exists in column O even when appending
-    // to an older file saved before this field existed.
-    if (!ws['O3']) ws['O3'] = { v: 'Attendant', t: 's' };
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:N3');
 
     // Find last row with data in col B (Date column, index 1)
     let insertRow = 3;
@@ -860,7 +899,6 @@ function buildAndDownload() {
     [...entries].reverse().forEach((e, i) => {
       const r = insertRow + i;
       const descStr = [e.brand, e.model].filter(Boolean).join(' ') || null;
-      const teamStr = getEntryTeam(e).join(', ') || null;
       const plateVal = e.plate
         ? (isNaN(e.plate) ? e.plate : Number(e.plate))
         : null;
@@ -879,7 +917,6 @@ function buildAndDownload() {
         11: val(e.wheel_polish),     // L Wheel Polish
         12: e.total_services ? { v: e.total_services, t: 'n' } : null, // M Total Services
         13: e.paid ? { v: e.paid, t: 'n' } : null,                  // N Paid
-        14: teamStr ? { v: teamStr, t: 's' } : null,                 // O Attendant(s)
       };
 
       Object.entries(row).forEach(([cIdx, cell]) => {
@@ -894,7 +931,7 @@ function buildAndDownload() {
     const newEndRow = insertRow + entries.length - 1;
     ws['!ref'] = XLSX.utils.encode_range({
       s: { r: 0, c: 0 },
-      e: { r: Math.max(range.e.r, newEndRow), c: 14 }
+      e: { r: Math.max(range.e.r, newEndRow), c: 13 }
     });
 
     const dateStr = new Date().toISOString().split('T')[0];
