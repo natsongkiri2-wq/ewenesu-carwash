@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ewenesu-carwash-v7';
+const CACHE_NAME = 'ewenesu-carwash-v8';
 const ASSETS = [
   './',
   './index.html',
