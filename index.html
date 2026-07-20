@@ -119,6 +119,13 @@ body {
 .input:focus { outline: none; border-color: var(--green-glow); box-shadow: 0 0 0 3px rgba(93,202,170,0.15); }
 .input.plate { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+select.input {
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234A6858' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
+  padding-right: 34px;
+}
+input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
 /* ── ATTENDANT / PRESET CHIPS ────────────────────── */
 .attendant-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -382,19 +389,29 @@ body {
         <label>Registration Number</label>
         <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
       </div>
+      <div class="field">
+        <label>Vehicle Type</label>
+        <select class="input" id="vehicleType" onchange="toggleOtherField('vehicleType')"></select>
+        <input class="input hidden" id="vehicleTypeOther" type="text" placeholder="Enter vehicle type" autocomplete="off" style="margin-top:8px;">
+      </div>
       <div class="grid2">
         <div class="field">
           <label>Brand</label>
-          <input class="input" id="brand" type="text" placeholder="e.g. Toyota" autocomplete="off">
+          <select class="input" id="brand" onchange="toggleOtherField('brand')"></select>
+          <input class="input hidden" id="brandOther" type="text" placeholder="Enter brand" autocomplete="off" style="margin-top:8px;">
         </div>
         <div class="field">
           <label>Model</label>
-          <input class="input" id="model" type="text" placeholder="e.g. Hilux" autocomplete="off">
+          <select class="input" id="model" onchange="toggleOtherField('model')"></select>
+          <input class="input hidden" id="modelOther" type="text" placeholder="Enter model" autocomplete="off" style="margin-top:8px;">
         </div>
       </div>
       <div class="field">
         <label>Time</label>
-        <input class="input" id="timeInput" type="text" placeholder="e.g. 9:00am" autocomplete="off">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input class="input" id="timeInput" type="time" style="flex:1;">
+          <button type="button" class="attendant-chip" onclick="setTimeNow()" style="white-space:nowrap;">Now</button>
+        </div>
       </div>
     </div>
 
@@ -594,6 +611,13 @@ const DEFAULT_STAFF = [];
 // category field — edit this list to match categories you actually use.
 const EXPENSE_PRESETS = ['Soap & Chemicals', 'Water', 'Fuel', 'Equipment', 'Wages Advance', 'Other'];
 
+// Dropdown options for the New Entry form. Each list ends with "Other",
+// which reveals a text box for anything not on the list. Edit these to
+// match what actually comes through the wash.
+const VEHICLE_TYPES  = ['Car', 'Van', 'SUV', 'Pickup/Truck', 'Motorbike', 'Bus', 'Other'];
+const VEHICLE_BRANDS = ['Toyota', 'Nissan', 'Mitsubishi', 'Isuzu', 'Mazda', 'Ford', 'Hyundai', 'Kia', 'Suzuki', 'Honda', 'Other'];
+const VEHICLE_MODELS = ['Hilux', 'Land Cruiser', 'Prado', 'Corolla', 'Vitz', 'RAV4', 'Hiace', 'Surf', 'Navara', 'X-Trail', 'Patrol', 'L200', 'Pajero', 'Outlander', 'Triton', 'D-Max', 'Other'];
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 let entries = loadEntries();
 let staff = loadStaff();
@@ -606,9 +630,12 @@ let selectedAttDate = todayStr();
 const now = new Date();
 document.getElementById('headerDate').textContent =
   now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-document.getElementById('timeInput').value =
-  now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+document.getElementById('timeInput').value = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
 document.getElementById('expDate').value = todayStr();
+
+populateSelect('vehicleType', VEHICLE_TYPES, 'Select type…');
+populateSelect('brand', VEHICLE_BRANDS, 'Select brand…');
+populateSelect('model', VEHICLE_MODELS, 'Select model…');
 
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -695,6 +722,45 @@ function saveExpenses() {
 function escapeAttr(s) { return s.replace(/'/g, "\\'"); }
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function shortDate(dateStr) { return dateStr.slice(2); } // '2026-07-14' -> '26-07-14'
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+// ── VEHICLE DETAIL DROPDOWNS ─────────────────────────────────────────────────────
+function populateSelect(id, options, placeholder) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">${placeholder}</option>` +
+    options.map(o => `<option value="${o}">${o}</option>`).join('');
+}
+function toggleOtherField(baseId) {
+  const select = document.getElementById(baseId);
+  const other = document.getElementById(baseId + 'Other');
+  const isOther = select.value === 'Other';
+  other.classList.toggle('hidden', !isOther);
+  if (isOther) other.focus();
+  else other.value = '';
+}
+function fieldValue(baseId) {
+  const select = document.getElementById(baseId);
+  if (select.value === 'Other') return document.getElementById(baseId + 'Other').value.trim();
+  return select.value;
+}
+function resetDropdown(baseId) {
+  document.getElementById(baseId).value = '';
+  document.getElementById(baseId + 'Other').value = '';
+  document.getElementById(baseId + 'Other').classList.add('hidden');
+}
+
+// ── TIME PICKER ───────────────────────────────────────────────────────────────
+function setTimeNow() {
+  const d = new Date();
+  document.getElementById('timeInput').value = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+function formatTime12(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return `${h12}:${pad2(m)}${h >= 12 ? 'pm' : 'am'}`;
+}
 
 function refreshAll() {
   updateDashboard();
@@ -1072,7 +1138,7 @@ function renderEntryList() {
     const tags = svcs.map(s =>
       `<span class="tag" style="background:${s.color}18;color:${s.color}">${s.icon} VT ${Number(e[s.key]).toLocaleString()}</span>`
     ).join('');
-    const desc = [e.brand, e.model].filter(Boolean).join(' ');
+    const desc = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ');
     return `
     <div class="entry-card">
       <div class="entry-top">
@@ -1180,9 +1246,10 @@ function showAttAlert(msg, type) {
 // ── SAVE ENTRY ─────────────────────────────────────────────────────────────────
 function handleSave() {
   const plate = document.getElementById('plate').value.trim().toUpperCase();
-  const brand = document.getElementById('brand').value.trim();
-  const model = document.getElementById('model').value.trim();
-  const time  = document.getElementById('timeInput').value.trim();
+  const vehicleType = fieldValue('vehicleType');
+  const brand = fieldValue('brand');
+  const model = fieldValue('model');
+  const time  = formatTime12(document.getElementById('timeInput').value);
   const paid  = parseFloat(document.getElementById('paid').value) || 0;
   const total = getTotal();
 
@@ -1196,7 +1263,7 @@ function handleSave() {
   });
 
   const entry = {
-    date: todayStr(), plate, brand, model, time,
+    date: todayStr(), plate, vehicle_type: vehicleType, brand, model, time,
     ...svcVals,
     total_services: total,
     paid,
@@ -1211,9 +1278,12 @@ function handleSave() {
 }
 
 function resetForm() {
-  ['plate','brand','model','paid'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('timeInput').value =
-    new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+  document.getElementById('plate').value = '';
+  document.getElementById('paid').value = '';
+  resetDropdown('vehicleType');
+  resetDropdown('brand');
+  resetDropdown('model');
+  setTimeNow();
   SERVICES.forEach(s => {
     document.getElementById(`svc_${s.key}`).value = '';
     document.getElementById(`row_${s.key}`).classList.remove('active');
@@ -1313,7 +1383,7 @@ function buildAndDownload() {
 
       [...entries].reverse().forEach((e, i) => {
         const r = insertRow + i;
-        const descStr = [e.brand, e.model].filter(Boolean).join(' ') || null;
+        const descStr = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ') || null;
         const plateVal = e.plate ? (isNaN(e.plate) ? e.plate : Number(e.plate)) : null;
 
         const row = {
