@@ -417,6 +417,8 @@ body {
       <div id="attRows"></div>
       <button type="button" class="attendant-chip add-new" onclick="addAttendant()" style="margin-top:4px;">+ Add Attendant</button>
       <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Enter each person's salary and bonus for the day — since rates differ per person, these are typed in manually and tallied up when you download the weekly report.</div>
+      <div id="attAlertBox" class="hidden" style="margin-top:12px;"></div>
+      <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAttendance()">Save Attendance</button>
     </div>
 
     <div class="card">
@@ -730,6 +732,7 @@ function renderAttRows() {
         <span class="att-dot">${present ? '●' : '○'}</span>
         <span class="att-name">${name}</span>
         <span class="att-status">${present ? 'Present' : 'Absent'}</span>
+        <button type="button" class="tag-delete" onclick="event.stopPropagation(); removeAttendant('${escapeAttr(name)}')">Remove</button>
       </div>
       ${present ? `
       <div class="att-pay">
@@ -797,6 +800,31 @@ function addAttendant() {
   renderAttWeekSummary();
   renderAttLog();
   refreshAll();
+}
+
+function removeAttendant(name) {
+  if (!confirm(`Remove ${name} from your team? This deletes them from staff and clears their attendance records for this week.`)) return;
+  staff = staff.filter(s => s !== name);
+  saveStaff();
+  Object.keys(attendance).forEach(date => {
+    if (attendance[date][name]) {
+      delete attendance[date][name];
+      if (Object.keys(attendance[date]).length === 0) delete attendance[date];
+    }
+  });
+  saveAttendance();
+  renderAttRows();
+  renderAttWeekSummary();
+  renderAttLog();
+  refreshAll();
+}
+
+function handleSaveAttendance() {
+  saveAttendance();
+  renderAttWeekSummary();
+  renderAttLog();
+  refreshAll();
+  showAttAlert('✓ Attendance saved for ' + fmtAttDate(selectedAttDate) + '!', 'success');
 }
 
 function getAttendanceSummary() {
@@ -1106,6 +1134,14 @@ function switchView(v) {
 // ── ALERTS ─────────────────────────────────────────────────────────────────────
 function showAlert(msg, type) {
   const box = document.getElementById('alertBox');
+  box.className = `alert ${type}`;
+  box.textContent = msg;
+  box.classList.remove('hidden');
+  if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2800);
+}
+
+function showAttAlert(msg, type) {
+  const box = document.getElementById('attAlertBox');
   box.className = `alert ${type}`;
   box.textContent = msg;
   box.classList.remove('hidden');
