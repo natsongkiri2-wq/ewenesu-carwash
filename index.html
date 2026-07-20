@@ -126,7 +126,18 @@ body {
 }
 .attendant-chip.active { background: var(--green); border-color: var(--green); color: #fff; }
 .attendant-chip.add-new { border-style: dashed; color: var(--green-mid); }
-.attendant-empty-hint { font-size: 12px; color: var(--text3); }
+.attendant-empty-hint { font-size: 12px; color: var(--text3); display: block; margin-bottom: 8px; }
+.team-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--green-pale); border-radius: 12px; padding: 10px 12px;
+  margin-bottom: 12px; font-size: 12px; color: var(--green);
+}
+.team-bar-names { flex: 1; font-weight: 600; }
+.team-bar-edit {
+  font-size: 11px; font-weight: 700; color: var(--green-mid);
+  background: none; border: none; cursor: pointer; text-decoration: underline;
+  padding: 2px;
+}
 
 /* ── SERVICE ROWS ────────────────────────────────── */
 .svc-row {
@@ -336,9 +347,16 @@ body {
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Attendant</div>
+    <div class="team-bar" id="teamBar">
+      <span>👥</span>
+      <span class="team-bar-names" id="teamBarNames">No team set for today</span>
+      <button type="button" class="team-bar-edit" onclick="toggleTeamEditor()">Edit</button>
+    </div>
+
+    <div class="card hidden" id="teamCard">
+      <div class="card-title">Today's Team</div>
       <div class="attendant-row" id="attendantRow"></div>
+      <div class="team-hint" style="font-size:12px;color:var(--text2);margin-top:10px;line-height:1.4;">Select everyone working today. This is set once and applied to every entry — no need to pick attendants per wash.</div>
     </div>
 
     <div class="card">
@@ -444,7 +462,8 @@ const DEFAULT_STAFF = [];
 let entries = loadEntries();
 let staff = loadStaff();
 let xlsxData = null;
-let selectedAttendant = '';
+let todaysTeam = loadTodaysTeam();
+let teamEditorOpen = todaysTeam.length === 0;
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 const now = new Date();
@@ -487,8 +506,10 @@ SERVICES.forEach(svc => {
   container.appendChild(row);
 });
 
-// Build attendant chips
+// Build attendant chips + team bar
 renderAttendantChips();
+renderTeamBar();
+document.getElementById('teamCard').classList.toggle('hidden', !teamEditorOpen);
 
 // ── PERSISTENCE ───────────────────────────────────────────────────────────────
 function loadEntries() {
@@ -507,22 +528,48 @@ function loadStaff() {
 function saveStaff() {
   localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
 }
+function teamKeyForToday() {
+  return `ewenesu_team_${todayStr()}`;
+}
+function loadTodaysTeam() {
+  try {
+    const t = JSON.parse(localStorage.getItem(teamKeyForToday()));
+    return Array.isArray(t) ? t : [];
+  } catch { return []; }
+}
+function saveTodaysTeam() {
+  localStorage.setItem(teamKeyForToday(), JSON.stringify(todaysTeam));
+}
 
-// ── ATTENDANT UI ──────────────────────────────────────────────────────────────
+// ── TEAM-OF-THE-DAY UI ──────────────────────────────────────────────────────────
+function renderTeamBar() {
+  const namesEl = document.getElementById('teamBarNames');
+  namesEl.textContent = todaysTeam.length > 0
+    ? todaysTeam.join(', ')
+    : 'No team set for today';
+}
+function toggleTeamEditor() {
+  teamEditorOpen = !teamEditorOpen;
+  document.getElementById('teamCard').classList.toggle('hidden', !teamEditorOpen);
+}
 function renderAttendantChips() {
   const row = document.getElementById('attendantRow');
   const chips = staff.map(name =>
-    `<button type="button" class="attendant-chip ${name === selectedAttendant ? 'active' : ''}" onclick="selectAttendant('${escapeAttr(name)}')">${name}</button>`
+    `<button type="button" class="attendant-chip ${todaysTeam.includes(name) ? 'active' : ''}" onclick="toggleTeamMember('${escapeAttr(name)}')">${name}</button>`
   ).join('');
   const hint = staff.length === 0
-    ? `<span class="attendant-empty-hint">No attendants yet — tap "+ Add" to set up your team</span><br>`
+    ? `<span class="attendant-empty-hint">No attendants yet — tap "+ Add" to set up your team</span>`
     : '';
   row.innerHTML = hint + chips + `<button type="button" class="attendant-chip add-new" onclick="addAttendant()">+ Add</button>`;
 }
 function escapeAttr(s) { return s.replace(/'/g, "\\'"); }
-function selectAttendant(name) {
-  selectedAttendant = (selectedAttendant === name) ? '' : name;
+function toggleTeamMember(name) {
+  const idx = todaysTeam.indexOf(name);
+  if (idx === -1) todaysTeam.push(name);
+  else todaysTeam.splice(idx, 1);
+  saveTodaysTeam();
   renderAttendantChips();
+  renderTeamBar();
 }
 function addAttendant() {
   const name = prompt('Attendant name:');
@@ -533,8 +580,12 @@ function addAttendant() {
     staff.push(trimmed);
     saveStaff();
   }
-  selectedAttendant = trimmed;
+  if (!todaysTeam.includes(trimmed)) {
+    todaysTeam.push(trimmed);
+    saveTodaysTeam();
+  }
   renderAttendantChips();
+  renderTeamBar();
 }
 
 // ── PRESET CHIPS ──────────────────────────────────────────────────────────────
@@ -597,24 +648,35 @@ function updateDashboard() {
   renderEntryList();
 }
 
+function getEntryTeam(e) {
+  // Supports both the current array format and older single-attendant entries
+  if (Array.isArray(e.team)) return e.team;
+  if (e.attendant) return [e.attendant];
+  return [];
+}
+
 function renderStaffBreakdown() {
   const card = document.getElementById('staffCard');
-  const withStaff = entries.filter(e => e.attendant);
-  if (withStaff.length === 0) { card.classList.add('hidden'); return; }
+  const withTeam = entries.filter(e => getEntryTeam(e).length > 0);
+  if (withTeam.length === 0) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
 
   const byStaff = {};
-  withStaff.forEach(e => {
-    if (!byStaff[e.attendant]) byStaff[e.attendant] = { total: 0, count: 0 };
-    byStaff[e.attendant].total += e.total_services;
-    byStaff[e.attendant].count += 1;
+  withTeam.forEach(e => {
+    const team = getEntryTeam(e);
+    const share = e.total_services / team.length;
+    team.forEach(name => {
+      if (!byStaff[name]) byStaff[name] = { total: 0, count: 0 };
+      byStaff[name].total += share;
+      byStaff[name].count += 1;
+    });
   });
 
   const rows = Object.entries(byStaff).sort((a, b) => b[1].total - a[1].total);
   document.getElementById('staffBreakdown').innerHTML = rows.map(([name, d]) => `
     <div class="staff-breakdown-row">
       <span class="staff-breakdown-name">${name}<span class="staff-breakdown-meta">${d.count} wash${d.count !== 1 ? 'es' : ''}</span></span>
-      <span class="staff-breakdown-total">VT ${d.total.toLocaleString()}</span>
+      <span class="staff-breakdown-total">VT ${Math.round(d.total).toLocaleString()}</span>
     </div>`).join('');
 }
 
@@ -634,6 +696,7 @@ function renderEntryList() {
       `<span class="tag" style="background:${s.color}18;color:${s.color}">${s.icon} VT ${Number(e[s.key]).toLocaleString()}</span>`
     ).join('');
     const desc = [e.brand, e.model].filter(Boolean).join(' ');
+    const team = getEntryTeam(e);
     return `
     <div class="entry-card">
       <div class="entry-top">
@@ -646,7 +709,7 @@ function renderEntryList() {
       <div class="entry-tags">
         <span class="tag tag-date">${e.date}</span>
         ${e.time ? `<span class="tag tag-time">${e.time}</span>` : ''}
-        ${e.attendant ? `<span class="tag tag-staff">👤 ${e.attendant}</span>` : ''}
+        ${team.length ? `<span class="tag tag-staff">👥 ${team.join(', ')}</span>` : ''}
         ${e.paid ? `<span class="tag tag-paid">Paid VT ${Number(e.paid).toLocaleString()}</span>` : ''}
         ${tags}
       </div>
@@ -698,7 +761,7 @@ function handleSave() {
 
   const entry = {
     date: todayStr(), plate, brand, model, time,
-    attendant: selectedAttendant,
+    team: [...todaysTeam],
     ...svcVals,
     total_services: total,
     paid,
@@ -721,8 +784,6 @@ function resetForm() {
     document.getElementById(`row_${s.key}`).classList.remove('active');
     syncPresetSelection(s.key);
   });
-  // Attendant selection is intentionally kept — the same person usually
-  // logs several washes in a row. Tap their chip again to deselect.
   updateTotal();
 }
 
@@ -799,6 +860,7 @@ function buildAndDownload() {
     [...entries].reverse().forEach((e, i) => {
       const r = insertRow + i;
       const descStr = [e.brand, e.model].filter(Boolean).join(' ') || null;
+      const teamStr = getEntryTeam(e).join(', ') || null;
       const plateVal = e.plate
         ? (isNaN(e.plate) ? e.plate : Number(e.plate))
         : null;
@@ -817,7 +879,7 @@ function buildAndDownload() {
         11: val(e.wheel_polish),     // L Wheel Polish
         12: e.total_services ? { v: e.total_services, t: 'n' } : null, // M Total Services
         13: e.paid ? { v: e.paid, t: 'n' } : null,                  // N Paid
-        14: e.attendant ? { v: e.attendant, t: 's' } : null,        // O Attendant
+        14: teamStr ? { v: teamStr, t: 's' } : null,                 // O Attendant(s)
       };
 
       Object.entries(row).forEach(([cIdx, cell]) => {
