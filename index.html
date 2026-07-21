@@ -926,7 +926,14 @@ function removeEntryFromRevenueLog(e) {
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function escapeAttr(s) { return s.replace(/'/g, "\\'"); }
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+// IMPORTANT: use the device's LOCAL calendar date, not toISOString() (which is
+// always UTC). Vanuatu is UTC+11 with no daylight saving, so toISOString()
+// would report the wrong (previous) date for roughly the first 11 hours of
+// every local day. All "what date is it" logic must go through this.
+function toLocalDateStr(d) {
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+function todayStr() { return toLocalDateStr(new Date()); }
 function shortDate(dateStr) { return dateStr.slice(2); } // '2026-07-14' -> '26-07-14'
 function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -1004,7 +1011,7 @@ function renderAttDateLabel() {
 function shiftAttDate(delta) {
   const d = new Date(selectedAttDate + 'T00:00:00');
   d.setDate(d.getDate() + delta);
-  selectedAttDate = d.toISOString().split('T')[0];
+  selectedAttDate = toLocalDateStr(d);
   renderAttDateLabel();
   renderAttRows();
 }
@@ -1432,7 +1439,7 @@ function mondayOf(date) {
 function setRangeThisWeek() {
   const today = new Date(todayStr() + 'T00:00:00');
   const monday = mondayOf(today);
-  document.getElementById('rangeFrom').value = monday.toISOString().split('T')[0];
+  document.getElementById('rangeFrom').value = toLocalDateStr(monday);
   document.getElementById('rangeTo').value = todayStr();
   renderRangeStats();
 }
@@ -1579,7 +1586,7 @@ function getRevenueDateRange(period) {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    range.push(d.toISOString().split('T')[0]);
+    range.push(toLocalDateStr(d));
   }
   return range;
 }
@@ -1987,7 +1994,7 @@ function buildAndDownload() {
       XLSX.utils.book_append_sheet(wb, expWs, expSheetName);
     }
 
-    const dateStr = new Date().toISOString().split('T')[0];
+    const dateStr = todayStr();
     XLSX.writeFile(wb, `Ewenesu_CarWash_MonthlyReport_${dateStr}.xlsx`);
 
     // After successful download, offer to clear everything for the new month
