@@ -78,10 +78,11 @@ body {
 .today-count { font-size: 11px; color: #8EDFC0; margin-top: 2px; }
 
 /* ── TABS ────────────────────────────────────────── */
-.tabs { display: flex; gap: 3px; margin-top: 4px; }
+.tabs { display: flex; gap: 2px; margin-top: 4px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
 .tab {
-  flex: 1; padding: 9px 3px;
-  font-family: 'Syne', sans-serif; font-size: 10.5px; font-weight: 700;
+  flex: 1 1 0; min-width: 0; padding: 9px 2px;
+  font-family: 'Syne', sans-serif; font-size: 9.5px; font-weight: 700;
   border: none; cursor: pointer; border-radius: 12px 12px 0 0;
   transition: all 0.2s;
   background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75);
@@ -348,6 +349,31 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .empty-state { text-align: center; padding: 50px 20px; color: var(--text2); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
 
+/* ── REVENUE TAB ──────────────────────────────────── */
+.rev-period-row { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; }
+.rev-period-row::-webkit-scrollbar { display: none; }
+.rev-period-chip {
+  flex: 1; text-align: center; padding: 9px 6px; border-radius: 11px;
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+  border: 1.5px solid var(--border); background: var(--card); color: var(--text2);
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.rev-period-chip.active { background: var(--green); border-color: var(--green); color: #fff; }
+.rev-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.rev-trend-wrap { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding: 4px 2px 0; overflow-x: auto; }
+.rev-trend-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1 0 20px; min-width: 20px; height: 100%; }
+.rev-trend-bar { width: 100%; max-width: 22px; background: linear-gradient(180deg, var(--green-light), var(--green)); border-radius: 5px 5px 2px 2px; transition: height 0.2s; min-height: 2px; }
+.rev-trend-bar.empty { background: var(--border); }
+.rev-trend-label { font-size: 8.5px; color: var(--text3); margin-top: 5px; font-weight: 600; white-space: nowrap; }
+.rev-bar-row { margin-bottom: 10px; }
+.rev-bar-row:last-child { margin-bottom: 0; }
+.rev-bar-top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin-bottom: 4px; }
+.rev-bar-name { font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.rev-bar-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--green); }
+.rev-bar-track { height: 7px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.rev-bar-fill { height: 100%; border-radius: 5px; transition: width 0.3s; }
+.rev-empty-note { font-size: 13px; color: var(--text3); text-align: center; padding: 10px 0; }
+
 /* ── SECTION HEADER ──────────────────────────────── */
 .section-header {
   font-size: 11px; font-weight: 700; color: var(--text3);
@@ -380,6 +406,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <button class="tab active" data-tab="form" onclick="switchView('form')">New Entry</button>
       <button class="tab" data-tab="attendance" onclick="switchView('attendance')">Attendance</button>
       <button class="tab" data-tab="expenses" onclick="switchView('expenses')">Expenses</button>
+      <button class="tab" data-tab="revenue" onclick="switchView('revenue')">Revenue</button>
       <button class="tab" data-tab="sync" onclick="switchView('sync')">
         Weekly
         <span class="pending-badge hidden" id="pendingBadge">0</span>
@@ -527,6 +554,56 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
   </div>
 
+  <!-- REVENUE VIEW -->
+  <div class="body view" id="viewRevenue">
+
+    <div class="rev-period-row" id="revPeriodRow">
+      <button type="button" class="rev-period-chip" data-period="today" onclick="selectRevenuePeriod('today')">Today</button>
+      <button type="button" class="rev-period-chip" data-period="7" onclick="selectRevenuePeriod('7')">7 Days</button>
+      <button type="button" class="rev-period-chip" data-period="30" onclick="selectRevenuePeriod('30')">30 Days</button>
+      <button type="button" class="rev-period-chip" data-period="all" onclick="selectRevenuePeriod('all')">All Time</button>
+    </div>
+
+    <div class="rev-stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-val" id="revTotalRevenue">VT 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Vehicles Washed</div>
+        <div class="stat-val" id="revVehicleCount">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Amount Paid</div>
+        <div class="stat-val" id="revPaid">VT 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Outstanding</div>
+        <div class="stat-val" id="revOutstanding">VT 0</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Daily Trend</div>
+      <div class="rev-trend-wrap" id="revTrendWrap"></div>
+    </div>
+
+    <div class="card" id="revServiceCard">
+      <div class="card-title">By Service Type</div>
+      <div id="revServiceBreakdown"></div>
+    </div>
+
+    <div class="card" id="revVehicleCard">
+      <div class="card-title">By Vehicle Type</div>
+      <div id="revVehicleBreakdown"></div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);text-align:center;padding:4px 8px 0;line-height:1.4;">
+      Revenue history is kept on this device permanently, even after you clear the weekly sales data.
+    </div>
+
+  </div>
+
   <!-- SYNC / WEEKLY REPORT VIEW -->
   <div class="body view" id="viewSync">
 
@@ -617,6 +694,7 @@ const STORAGE_KEY    = 'ewenesu_entries';
 const STAFF_KEY       = 'ewenesu_staff';
 const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on weekly download
 const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on weekly download
+const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — never cleared
 
 // Default preset prices per service (VT). These are just starting points so
 // the app is usable immediately — edit the numbers below to match your
@@ -653,6 +731,9 @@ let attendance = loadAttendance();
 let expenses = loadExpenses();
 let xlsxData = null;
 let selectedAttDate = todayStr();
+let revenueLog = loadRevenueLog();
+let revenuePeriod = 'today';
+ensureRevenueLog();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 const now = new Date();
@@ -745,6 +826,67 @@ function loadExpenses() {
 }
 function saveExpenses() {
   localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+}
+
+// ── REVENUE LOG (permanent, never cleared by weekly download) ────────────────
+// Shape: { "2026-07-21": { total, paid, count, services: {key: vt}, vehicleTypes: {type: vt} }, ... }
+function loadRevenueLog() {
+  try {
+    const r = JSON.parse(localStorage.getItem(REVENUE_LOG_KEY));
+    return (r && typeof r === 'object') ? r : null;
+  } catch { return null; }
+}
+function saveRevenueLog() {
+  localStorage.setItem(REVENUE_LOG_KEY, JSON.stringify(revenueLog));
+}
+
+// One-time backfill: if this device has never had a revenue log before,
+// seed it from whatever sales entries are currently pending, so existing
+// data isn't lost the first time this feature runs.
+function ensureRevenueLog() {
+  if (revenueLog !== null) return;
+  revenueLog = {};
+  entries.forEach(e => addEntryToRevenueLog(e));
+  saveRevenueLog();
+}
+
+function emptyRevenueDay() {
+  return { total: 0, paid: 0, count: 0, services: {}, vehicleTypes: {} };
+}
+
+function addEntryToRevenueLog(e) {
+  if (!revenueLog[e.date]) revenueLog[e.date] = emptyRevenueDay();
+  const day = revenueLog[e.date];
+  day.total += Number(e.total_services) || 0;
+  day.paid  += Number(e.paid) || 0;
+  day.count += 1;
+  SERVICES.forEach(s => {
+    const v = Number(e[s.key]) || 0;
+    if (v > 0) day.services[s.key] = (day.services[s.key] || 0) + v;
+  });
+  const vt = e.vehicle_type || 'Not specified';
+  day.vehicleTypes[vt] = (day.vehicleTypes[vt] || 0) + (Number(e.total_services) || 0);
+}
+
+function removeEntryFromRevenueLog(e) {
+  const day = revenueLog[e.date];
+  if (!day) return;
+  day.total = Math.max(0, day.total - (Number(e.total_services) || 0));
+  day.paid  = Math.max(0, day.paid - (Number(e.paid) || 0));
+  day.count = Math.max(0, day.count - 1);
+  SERVICES.forEach(s => {
+    const v = Number(e[s.key]) || 0;
+    if (v > 0 && day.services[s.key]) {
+      day.services[s.key] = Math.max(0, day.services[s.key] - v);
+      if (day.services[s.key] === 0) delete day.services[s.key];
+    }
+  });
+  const vt = e.vehicle_type || 'Not specified';
+  if (day.vehicleTypes[vt]) {
+    day.vehicleTypes[vt] = Math.max(0, day.vehicleTypes[vt] - (Number(e.total_services) || 0));
+    if (day.vehicleTypes[vt] === 0) delete day.vehicleTypes[vt];
+  }
+  if (day.count === 0) delete revenueLog[e.date];
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -1187,9 +1329,12 @@ function filterSalesEntries(value) {
 
 function deleteEntry(id) {
   if (!confirm('Delete this sales entry?')) return;
+  const removed = entries.find(e => e.id === id);
   entries = entries.filter(e => e.id !== id);
   saveEntries();
+  if (removed) { removeEntryFromRevenueLog(removed); saveRevenueLog(); }
   refreshAll();
+  if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
 }
 
 function renderEntryList() {
@@ -1322,6 +1467,137 @@ function renderWeeklyVehicleSummary() {
     </div>`).join('');
 }
 
+// ── REVENUE TAB ──────────────────────────────────────────────────────────────
+function serviceLabel(key) {
+  const s = SERVICES.find(x => x.key === key);
+  return s ? s.label : key;
+}
+function serviceMeta(key) {
+  return SERVICES.find(x => x.key === key) || { icon: '🧽', color: '#0B5E45' };
+}
+
+// Returns an array of date strings (oldest → newest) for the selected period.
+function getRevenueDateRange(period) {
+  const dates = Object.keys(revenueLog).sort();
+  if (dates.length === 0) return [];
+  if (period === 'all') return dates;
+
+  const today = new Date(todayStr() + 'T00:00:00');
+  let days = period === 'today' ? 1 : Number(period);
+  const range = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    range.push(d.toISOString().split('T')[0]);
+  }
+  return range;
+}
+
+function aggregateRevenue(dates) {
+  const agg = { total: 0, paid: 0, count: 0, services: {}, vehicleTypes: {} };
+  dates.forEach(date => {
+    const day = revenueLog[date];
+    if (!day) return;
+    agg.total += day.total;
+    agg.paid  += day.paid;
+    agg.count += day.count;
+    Object.entries(day.services || {}).forEach(([k, v]) => agg.services[k] = (agg.services[k] || 0) + v);
+    Object.entries(day.vehicleTypes || {}).forEach(([k, v]) => agg.vehicleTypes[k] = (agg.vehicleTypes[k] || 0) + v);
+  });
+  return agg;
+}
+
+function selectRevenuePeriod(period) {
+  revenuePeriod = period;
+  renderRevenueTab();
+}
+
+function renderRevenueTab() {
+  document.querySelectorAll('.rev-period-chip').forEach(chip =>
+    chip.classList.toggle('active', chip.dataset.period === revenuePeriod)
+  );
+
+  const dates = getRevenueDateRange(revenuePeriod);
+  const agg = aggregateRevenue(dates);
+  const outstanding = Math.max(0, agg.total - agg.paid);
+
+  document.getElementById('revTotalRevenue').textContent = 'VT ' + agg.total.toLocaleString();
+  document.getElementById('revVehicleCount').textContent = agg.count.toLocaleString();
+  document.getElementById('revPaid').textContent = 'VT ' + agg.paid.toLocaleString();
+  document.getElementById('revOutstanding').textContent = 'VT ' + outstanding.toLocaleString();
+
+  renderRevenueTrend(dates);
+  renderRevenueServiceBreakdown(agg);
+  renderRevenueVehicleBreakdown(agg);
+}
+
+function renderRevenueTrend(dates) {
+  const wrap = document.getElementById('revTrendWrap');
+  if (dates.length === 0) {
+    wrap.innerHTML = `<p class="rev-empty-note" style="width:100%;">No sales logged yet — trend appears once entries are saved.</p>`;
+    return;
+  }
+  // For "All Time" with lots of days, keep the chart readable by capping bars shown.
+  const shown = dates.length > 60 ? dates.slice(-60) : dates;
+  const totals = shown.map(d => (revenueLog[d] ? revenueLog[d].total : 0));
+  const max = Math.max(1, ...totals);
+
+  wrap.innerHTML = shown.map((d, i) => {
+    const total = totals[i];
+    const heightPct = Math.round((total / max) * 100);
+    const label = new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    return `
+      <div class="rev-trend-col" title="${label}: VT ${total.toLocaleString()}">
+        <div class="rev-trend-bar ${total === 0 ? 'empty' : ''}" style="height:${total === 0 ? 3 : Math.max(4, heightPct)}%;"></div>
+        <div class="rev-trend-label">${shown.length > 14 ? '' : label}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderRevenueServiceBreakdown(agg) {
+  const card = document.getElementById('revServiceCard');
+  const rows = Object.entries(agg.services).sort((a, b) => b[1] - a[1]);
+  if (rows.length === 0) {
+    card.querySelector('#revServiceBreakdown').innerHTML =
+      `<p class="rev-empty-note">No services recorded for this period.</p>`;
+    return;
+  }
+  const max = Math.max(...rows.map(r => r[1]));
+  document.getElementById('revServiceBreakdown').innerHTML = rows.map(([key, total]) => {
+    const meta = serviceMeta(key);
+    const pct = Math.round((total / max) * 100);
+    return `
+    <div class="rev-bar-row">
+      <div class="rev-bar-top">
+        <span class="rev-bar-name">${meta.icon} ${serviceLabel(key)}</span>
+        <span class="rev-bar-total">VT ${total.toLocaleString()}</span>
+      </div>
+      <div class="rev-bar-track"><div class="rev-bar-fill" style="width:${pct}%;background:${meta.color};"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderRevenueVehicleBreakdown(agg) {
+  const rows = Object.entries(agg.vehicleTypes).sort((a, b) => b[1] - a[1]);
+  if (rows.length === 0) {
+    document.getElementById('revVehicleBreakdown').innerHTML =
+      `<p class="rev-empty-note">No vehicle types recorded for this period.</p>`;
+    return;
+  }
+  const max = Math.max(...rows.map(r => r[1]));
+  document.getElementById('revVehicleBreakdown').innerHTML = rows.map(([type, total]) => {
+    const pct = Math.round((total / max) * 100);
+    return `
+    <div class="rev-bar-row">
+      <div class="rev-bar-top">
+        <span class="rev-bar-name">${type}</span>
+        <span class="rev-bar-total">VT ${total.toLocaleString()}</span>
+      </div>
+      <div class="rev-bar-track"><div class="rev-bar-fill" style="width:${pct}%;background:var(--green);"></div></div>
+    </div>`;
+  }).join('');
+}
+
 // ── VIEW SWITCHING ─────────────────────────────────────────────────────────────
 function switchView(v) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1340,6 +1616,9 @@ function switchView(v) {
     document.getElementById('viewExpenses').classList.add('active');
     renderExpenseList();
     updateExpenseWeekTotal();
+  } else if (v === 'revenue') {
+    document.getElementById('viewRevenue').classList.add('active');
+    renderRevenueTab();
   } else {
     document.getElementById('viewSync').classList.add('active');
     renderEntryList();
@@ -1398,6 +1677,8 @@ function handleSave() {
 
   entries.unshift(entry);
   saveEntries();         // ← persist to localStorage
+  addEntryToRevenueLog(entry);
+  saveRevenueLog();
   refreshAll();
   resetForm();
   showAlert('✓ Entry saved and stored on device!', 'success');
