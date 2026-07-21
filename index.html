@@ -386,6 +386,13 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="card">
       <div class="card-title">Vehicle Details</div>
       <div class="field">
+        <label>Date</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input class="input" id="entryDate" type="date" style="flex:1;" onchange="updateEntryDateTodayBtn()">
+          <button type="button" class="attendant-chip" id="entryDateTodayBtn" onclick="setEntryDateToday()" style="white-space:nowrap;display:none;">Today</button>
+        </div>
+      </div>
+      <div class="field">
         <label>Registration Number</label>
         <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
       </div>
@@ -631,6 +638,7 @@ const now = new Date();
 document.getElementById('headerDate').textContent =
   now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 document.getElementById('timeInput').value = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+document.getElementById('entryDate').value = todayStr();
 document.getElementById('expDate').value = todayStr();
 
 populateSelect('vehicleType', VEHICLE_TYPES, 'Select type…');
@@ -760,6 +768,16 @@ function formatTime12(hhmm) {
   let h12 = h % 12;
   if (h12 === 0) h12 = 12;
   return `${h12}:${pad2(m)}${h >= 12 ? 'pm' : 'am'}`;
+}
+
+// ── ENTRY DATE ────────────────────────────────────────────────────────────────
+function setEntryDateToday() {
+  document.getElementById('entryDate').value = todayStr();
+  updateEntryDateTodayBtn();
+}
+function updateEntryDateTodayBtn() {
+  const isToday = document.getElementById('entryDate').value === todayStr();
+  document.getElementById('entryDateTodayBtn').style.display = isToday ? 'none' : 'block';
 }
 
 function refreshAll() {
@@ -1246,6 +1264,7 @@ function showAttAlert(msg, type) {
 // ── SAVE ENTRY ─────────────────────────────────────────────────────────────────
 function handleSave() {
   const plate = document.getElementById('plate').value.trim().toUpperCase();
+  const date = document.getElementById('entryDate').value || todayStr();
   const vehicleType = fieldValue('vehicleType');
   const brand = fieldValue('brand');
   const model = fieldValue('model');
@@ -1263,7 +1282,7 @@ function handleSave() {
   });
 
   const entry = {
-    date: todayStr(), plate, vehicle_type: vehicleType, brand, model, time,
+    date, plate, vehicle_type: vehicleType, brand, model, time,
     ...svcVals,
     total_services: total,
     paid,
@@ -1284,6 +1303,8 @@ function resetForm() {
   resetDropdown('brand');
   resetDropdown('model');
   setTimeNow();
+  // Date is intentionally left as-is — handy for entering several
+  // backdated entries for the same earlier day in a row.
   SERVICES.forEach(s => {
     document.getElementById(`svc_${s.key}`).value = '';
     document.getElementById(`row_${s.key}`).classList.remove('active');
@@ -1381,7 +1402,8 @@ function buildAndDownload() {
         if (cell && cell.v) insertRow = r + 1;
       }
 
-      [...entries].reverse().forEach((e, i) => {
+      const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+      sortedEntries.forEach((e, i) => {
         const r = insertRow + i;
         const descStr = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ') || null;
         const plateVal = e.plate ? (isNaN(e.plate) ? e.plate : Number(e.plate)) : null;
