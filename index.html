@@ -281,6 +281,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   border: 1.5px solid #E57373; cursor: pointer;
   background: transparent; color: #C62828; margin-bottom: 12px;
 }
+.btn-backup {
+  width: 100%; padding: 12px; border-radius: 12px;
+  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
+  border: 1.5px solid var(--green-mid); cursor: pointer;
+  background: transparent; color: var(--green-mid); margin-bottom: 10px;
+}
 
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .stat-box {
@@ -332,6 +338,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
 .tag-time { background: var(--bg); color: var(--text2); }
 .tag-paid { background: #FFF8E1; color: #E65100; }
+.tag-outstanding { background: #FDECEC; color: #8B1A1A; }
 .tag-date { background: #E8EAF6; color: #283593; font-size: 10px; }
 .tag-delete {
   margin-left: auto; font-size: 11px; font-weight: 700; color: #C62828;
@@ -435,8 +442,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="paid-row">
       <span class="paid-label">💰 Amount Paid</span>
       <span style="font-size:11px;color:#E65100;font-weight:700;">VT</span>
-      <input class="paid-input" id="paid" type="number" placeholder="0" min="0" step="50" inputmode="numeric">
+      <input class="paid-input" id="paid" type="number" placeholder="0" min="0" step="50" inputmode="numeric" oninput="updateOutstandingHint()">
     </div>
+    <div id="outstandingHint" class="hidden" style="font-size:12px;color:#C62828;font-weight:600;margin:-6px 0 12px;padding-left:4px;"></div>
 
     <div id="alertBox" class="hidden"></div>
     <button class="btn-save" id="saveBtn" onclick="handleSave()">Save Entry</button>
@@ -522,6 +530,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   <!-- SYNC / WEEKLY REPORT VIEW -->
   <div class="body view" id="viewSync">
 
+    <!-- Week range indicator -->
+    <div class="date-bar" id="weekRangeBar" style="display:none;">
+      <span class="date-bar-names" id="weekRangeLabel">Covering —</span>
+    </div>
+
     <!-- Info notice -->
     <div class="alert info" id="offlineInfo" style="margin-bottom:12px;">
       📅 Sales, attendance & pay, and expenses build up here through the week. At week's end, download the full report and clear to start fresh.
@@ -559,6 +572,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
       ⬇ Download Weekly Report
     </button>
+    <button class="btn-backup" onclick="exportBackup()">💾 Export Backup (JSON)</button>
     <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Week's Data</button>
 
     <!-- Attendance summary -->
@@ -573,6 +587,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div id="weeklyExpSummary"></div>
     </div>
 
+    <!-- Vehicle type breakdown -->
+    <div class="card hidden" id="weeklyVehicleCard">
+      <div class="card-title">Vehicle Types This Week</div>
+      <div id="weeklyVehicleSummary"></div>
+    </div>
+
     <!-- Sales entry list -->
     <div id="syncEmpty" class="empty-state">
       <div class="empty-icon">✅</div>
@@ -582,6 +602,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <div id="syncEntries" class="hidden">
       <div class="section-header">Sales Entries</div>
+      <input class="input" id="salesSearch" type="text" placeholder="Search by plate…" autocomplete="off" style="margin-bottom:10px;" oninput="filterSalesEntries(this.value)">
       <div id="entryList"></div>
     </div>
 
@@ -785,6 +806,8 @@ function refreshAll() {
   renderWeeklyStats();
   renderWeeklyAttSummary();
   renderWeeklyExpSummary();
+  renderWeeklyVehicleSummary();
+  renderWeekRangeLabel();
 }
 
 // ── ATTENDANCE TAB ──────────────────────────────────────────────────────────────
@@ -1122,6 +1145,20 @@ function updateTotal() {
   const t = getTotal();
   document.getElementById('totalValue').textContent = 'VT ' + t.toLocaleString();
   document.getElementById('totalBar').classList.toggle('active', t > 0);
+  updateOutstandingHint();
+}
+
+function updateOutstandingHint() {
+  const total = getTotal();
+  const paid = parseFloat(document.getElementById('paid').value) || 0;
+  const outstanding = total - paid;
+  const hint = document.getElementById('outstandingHint');
+  if (total > 0 && outstanding > 0) {
+    hint.textContent = `Outstanding: VT ${outstanding.toLocaleString()}`;
+    hint.classList.remove('hidden');
+  } else {
+    hint.classList.add('hidden');
+  }
 }
 
 function updateDashboard() {
@@ -1141,8 +1178,26 @@ function updateDashboard() {
   renderEntryList();
 }
 
+let salesSearchTerm = '';
+
+function filterSalesEntries(value) {
+  salesSearchTerm = value.trim().toUpperCase();
+  renderEntryList();
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this sales entry?')) return;
+  entries = entries.filter(e => e.id !== id);
+  saveEntries();
+  refreshAll();
+}
+
 function renderEntryList() {
   const list = document.getElementById('entryList');
+  const filtered = salesSearchTerm
+    ? entries.filter(e => (e.plate || '').toUpperCase().includes(salesSearchTerm))
+    : entries;
+
   if (entries.length === 0) {
     document.getElementById('syncEmpty').classList.remove('hidden');
     document.getElementById('syncEntries').classList.add('hidden');
@@ -1151,12 +1206,18 @@ function renderEntryList() {
   document.getElementById('syncEmpty').classList.add('hidden');
   document.getElementById('syncEntries').classList.remove('hidden');
 
-  list.innerHTML = entries.map((e, idx) => {
+  if (filtered.length === 0) {
+    list.innerHTML = `<p style="font-size:13px;color:var(--text3);text-align:center;padding:16px 0;">No entries match "${salesSearchTerm}".</p>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => {
     const svcs = SERVICES.filter(s => e[s.key] !== '' && e[s.key] !== undefined && e[s.key] !== null);
     const tags = svcs.map(s =>
       `<span class="tag" style="background:${s.color}18;color:${s.color}">${s.icon} VT ${Number(e[s.key]).toLocaleString()}</span>`
     ).join('');
     const desc = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ');
+    const outstanding = e.total_services - (Number(e.paid) || 0);
     return `
     <div class="entry-card">
       <div class="entry-top">
@@ -1170,7 +1231,9 @@ function renderEntryList() {
         <span class="tag tag-date">${e.date}</span>
         ${e.time ? `<span class="tag tag-time">${e.time}</span>` : ''}
         ${e.paid ? `<span class="tag tag-paid">Paid VT ${Number(e.paid).toLocaleString()}</span>` : ''}
+        ${outstanding > 0 ? `<span class="tag tag-outstanding">Owes VT ${outstanding.toLocaleString()}</span>` : ''}
         ${tags}
+        <button type="button" class="tag-delete" onclick="deleteEntry(${e.id})">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -1217,6 +1280,48 @@ function renderWeeklyExpSummary() {
     </div>`).join('');
 }
 
+function fmtShortDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+function renderWeekRangeLabel() {
+  const bar = document.getElementById('weekRangeBar');
+  const allDates = [
+    ...entries.map(e => e.date),
+    ...Object.keys(attendance),
+    ...expenses.map(e => e.date)
+  ].sort();
+  if (allDates.length === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const start = allDates[0], end = allDates[allDates.length - 1];
+  document.getElementById('weekRangeLabel').textContent =
+    start === end ? `Covering ${fmtShortDate(start)}` : `Covering ${fmtShortDate(start)} – ${fmtShortDate(end)}`;
+}
+
+function getVehicleTypeTotals() {
+  const totals = {};
+  entries.forEach(e => {
+    const type = e.vehicle_type || 'Not specified';
+    if (!totals[type]) totals[type] = { count: 0, total: 0 };
+    totals[type].count += 1;
+    totals[type].total += e.total_services;
+  });
+  return Object.entries(totals).sort((a, b) => b[1].count - a[1].count);
+}
+
+function renderWeeklyVehicleSummary() {
+  const card = document.getElementById('weeklyVehicleCard');
+  const rows = getVehicleTypeTotals();
+  if (rows.length === 0) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  document.getElementById('weeklyVehicleSummary').innerHTML = rows.map(([type, d]) => `
+    <div class="staff-breakdown-row">
+      <span class="staff-breakdown-name">${type}<span class="staff-breakdown-meta">${d.count} wash${d.count !== 1 ? 'es' : ''}</span></span>
+      <span class="staff-breakdown-total">VT ${d.total.toLocaleString()}</span>
+    </div>`).join('');
+}
+
 // ── VIEW SWITCHING ─────────────────────────────────────────────────────────────
 function switchView(v) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1241,6 +1346,8 @@ function switchView(v) {
     renderWeeklyStats();
     renderWeeklyAttSummary();
     renderWeeklyExpSummary();
+    renderWeeklyVehicleSummary();
+    renderWeekRangeLabel();
   }
 }
 
@@ -1362,6 +1469,28 @@ function uniqueSheetName(wb, base) {
 function val(v) {
   return (v !== '' && v !== null && v !== undefined)
     ? { v: Number(v), t: 'n' } : null;
+}
+
+function exportBackup() {
+  const hasData = entries.length > 0 || Object.keys(attendance).length > 0 || expenses.length > 0;
+  if (!hasData) { alert('No pending data to back up yet.'); return; }
+
+  const backup = {
+    exported_at: new Date().toISOString(),
+    entries,
+    attendance,
+    expenses,
+    staff,
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Ewenesu_CarWash_Backup_${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function buildAndDownload() {
