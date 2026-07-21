@@ -408,7 +408,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <button class="tab" data-tab="expenses" onclick="switchView('expenses')">Expenses</button>
       <button class="tab" data-tab="revenue" onclick="switchView('revenue')">Revenue</button>
       <button class="tab" data-tab="sync" onclick="switchView('sync')">
-        Weekly
+        Monthly
         <span class="pending-badge hidden" id="pendingBadge">0</span>
       </button>
     </div>
@@ -491,15 +491,15 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title" id="attCardTitle">Attendance & Pay — Today</div>
       <div id="attRows"></div>
       <button type="button" class="attendant-chip add-new" onclick="addAttendant()" style="margin-top:4px;">+ Add Attendant</button>
-      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Enter each person's salary and bonus for the day — since rates differ per person, these are typed in manually and tallied up when you download the weekly report.</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Enter each person's salary and bonus for the day — since rates differ per person, these are typed in manually and tallied up when you download the monthly report. Use the date range on the Monthly tab to check a single week's pay before payout.</div>
       <div id="attAlertBox" class="hidden" style="margin-top:12px;"></div>
       <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAttendance()">Save Attendance</button>
     </div>
 
     <div class="card">
-      <div class="card-title">This Week — Presence & Pay</div>
+      <div class="card-title">This Period — Presence & Pay</div>
       <div id="attWeekSummary">
-        <p style="font-size:13px;color:var(--text3);">No attendance recorded yet this week.</p>
+        <p style="font-size:13px;color:var(--text3);">No attendance recorded yet this period.</p>
       </div>
     </div>
 
@@ -540,7 +540,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     </div>
 
     <div class="total-bar">
-      <span class="total-label">This Week's Expenses</span>
+      <span class="total-label">This Period's Expenses</span>
       <span class="total-value" id="expWeekTotal">VT 0</span>
     </div>
 
@@ -548,7 +548,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div id="expEmpty" class="empty-state">
       <div class="empty-icon">🧾</div>
       <strong>No expenses recorded yet</strong>
-      <p style="margin-top:8px;font-size:13px;color:var(--text3);">Add this week's expenses above</p>
+      <p style="margin-top:8px;font-size:13px;color:var(--text3);">Add this period's expenses above</p>
     </div>
     <div id="expList" class="hidden"></div>
 
@@ -599,12 +599,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     </div>
 
     <div style="font-size:11px;color:var(--text3);text-align:center;padding:4px 8px 0;line-height:1.4;">
-      Revenue history is kept on this device permanently, even after you clear the weekly sales data.
+      Revenue history is kept on this device permanently, even after you clear the monthly sales data.
     </div>
 
   </div>
 
-  <!-- SYNC / WEEKLY REPORT VIEW -->
+  <!-- SYNC / MONTHLY REPORT VIEW -->
   <div class="body view" id="viewSync">
 
     <!-- Week range indicator -->
@@ -614,21 +614,55 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <!-- Info notice -->
     <div class="alert info" id="offlineInfo" style="margin-bottom:12px;">
-      📅 Sales, attendance & pay, and expenses build up here through the week. At week's end, download the full report and clear to start fresh.
+      📅 Sales, attendance & pay, and expenses build up here through the month. At month's end, download the full report and clear to start fresh.
+    </div>
+
+    <!-- Weekly payout check -->
+    <div class="card">
+      <div class="card-title">Check a Week (for Payout)</div>
+      <div class="grid2">
+        <div class="field">
+          <label>From</label>
+          <input class="input" id="rangeFrom" type="date" onchange="renderRangeStats()">
+        </div>
+        <div class="field">
+          <label>To</label>
+          <input class="input" id="rangeTo" type="date" onchange="renderRangeStats()">
+        </div>
+      </div>
+      <button type="button" class="attendant-chip" onclick="setRangeThisWeek()" style="margin-bottom:12px;">This Week</button>
+      <div class="stats-grid" style="margin-bottom:0;">
+        <div class="stat-box">
+          <div class="stat-label">Sales</div>
+          <div class="stat-val" id="rangeSales">VT 0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Salaries + Bonus</div>
+          <div class="stat-val" id="rangeSalaries">VT 0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Expenses</div>
+          <div class="stat-val" id="rangeExpenses">VT 0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Net</div>
+          <div class="stat-val" id="rangeNet">VT 0</div>
+        </div>
+      </div>
     </div>
 
     <!-- Load file -->
     <div class="file-load-card" id="fileLoadCard" onclick="document.getElementById('fileInput').click()">
       <div class="file-icon">📂</div>
       <strong id="fileLoadLabel">Load Existing Sales Register</strong>
-      <p id="fileLoadSub">Tap to load your Ewenesu_CarWash_Register.xlsx<br>New sales will be appended to it — attendance & expenses get their own sheets each week</p>
+      <p id="fileLoadSub">Tap to load your Ewenesu_CarWash_Register.xlsx<br>New sales will be appended to it — attendance & expenses get their own sheets each month</p>
       <input type="file" id="fileInput" accept=".xlsx" class="hidden" onchange="handleFileLoad(event)">
     </div>
 
     <!-- Stats -->
     <div class="stats-grid">
       <div class="stat-box">
-        <div class="stat-label">Sales This Week</div>
+        <div class="stat-label">Sales This Month</div>
         <div class="stat-val" id="statSales">VT 0</div>
       </div>
       <div class="stat-box">
@@ -647,26 +681,26 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <!-- Actions -->
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
-      ⬇ Download Weekly Report
+      ⬇ Download Monthly Report
     </button>
     <button class="btn-backup" onclick="exportBackup()">💾 Export Backup (JSON)</button>
-    <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Week's Data</button>
+    <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
 
     <!-- Attendance summary -->
     <div class="card hidden" id="weeklyAttCard">
-      <div class="card-title">Attendance & Pay This Week</div>
+      <div class="card-title">Attendance & Pay This Month</div>
       <div id="weeklyAttSummary"></div>
     </div>
 
     <!-- Expenses summary -->
     <div class="card hidden" id="weeklyExpCard">
-      <div class="card-title">Expenses This Week (by Category)</div>
+      <div class="card-title">Expenses This Month (by Category)</div>
       <div id="weeklyExpSummary"></div>
     </div>
 
     <!-- Vehicle type breakdown -->
     <div class="card hidden" id="weeklyVehicleCard">
-      <div class="card-title">Vehicle Types This Week</div>
+      <div class="card-title">Vehicle Types This Month</div>
       <div id="weeklyVehicleSummary"></div>
     </div>
 
@@ -692,8 +726,8 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const STORAGE_KEY    = 'ewenesu_entries';
 const STAFF_KEY       = 'ewenesu_staff';
-const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on weekly download
-const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on weekly download
+const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
+const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on monthly download
 const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — never cleared
 
 // Default preset prices per service (VT). These are just starting points so
@@ -742,6 +776,7 @@ document.getElementById('headerDate').textContent =
 document.getElementById('timeInput').value = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
 document.getElementById('entryDate').value = todayStr();
 document.getElementById('expDate').value = todayStr();
+setRangeThisWeek();
 
 populateSelect('vehicleType', VEHICLE_TYPES, 'Select type…');
 populateSelect('brand', VEHICLE_BRANDS, 'Select brand…');
@@ -950,6 +985,7 @@ function refreshAll() {
   renderWeeklyExpSummary();
   renderWeeklyVehicleSummary();
   renderWeekRangeLabel();
+  renderRangeStats();
 }
 
 // ── ATTENDANCE TAB ──────────────────────────────────────────────────────────────
@@ -1068,7 +1104,7 @@ function addAttendant() {
 }
 
 function removeAttendant(name) {
-  if (!confirm(`Remove ${name} from your team? This deletes them from staff and clears their attendance records for this week.`)) return;
+  if (!confirm(`Remove ${name} from your team? This deletes them from staff and clears their attendance records for this period.`)) return;
   staff = staff.filter(s => s !== name);
   saveStaff();
   Object.keys(attendance).forEach(date => {
@@ -1384,6 +1420,61 @@ function renderEntryList() {
   }).join('');
 }
 
+// ── WEEKLY PAYOUT CHECK (custom date range within the current pending month) ──
+function mondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diff = (day === 0) ? -6 : 1 - day; // shift back to Monday
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function setRangeThisWeek() {
+  const today = new Date(todayStr() + 'T00:00:00');
+  const monday = mondayOf(today);
+  document.getElementById('rangeFrom').value = monday.toISOString().split('T')[0];
+  document.getElementById('rangeTo').value = todayStr();
+  renderRangeStats();
+}
+
+function computeRangeTotals(from, to) {
+  const sales = entries
+    .filter(e => e.date >= from && e.date <= to)
+    .reduce((a, e) => a + (Number(e.total_services) || 0), 0);
+
+  let salaries = 0;
+  Object.entries(attendance).forEach(([date, dayObj]) => {
+    if (date >= from && date <= to) {
+      Object.values(dayObj).forEach(rec => {
+        salaries += (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
+      });
+    }
+  });
+
+  const exp = expenses
+    .filter(e => e.date >= from && e.date <= to)
+    .reduce((a, e) => a + (Number(e.amount) || 0), 0);
+
+  return { sales, salaries, exp, net: sales - salaries - exp };
+}
+
+function renderRangeStats() {
+  const fromEl = document.getElementById('rangeFrom');
+  const toEl = document.getElementById('rangeTo');
+  if (!fromEl || !toEl) return; // view not built yet
+  let from = fromEl.value, to = toEl.value;
+  if (!from || !to) return;
+  if (from > to) { [from, to] = [to, from]; } // tolerate reversed picks
+
+  const r = computeRangeTotals(from, to);
+  document.getElementById('rangeSales').textContent = 'VT ' + r.sales.toLocaleString();
+  document.getElementById('rangeSalaries').textContent = 'VT ' + r.salaries.toLocaleString();
+  document.getElementById('rangeExpenses').textContent = 'VT ' + r.exp.toLocaleString();
+  const netEl = document.getElementById('rangeNet');
+  netEl.textContent = 'VT ' + r.net.toLocaleString();
+  netEl.classList.toggle('negative', r.net < 0);
+}
+
 // ── WEEKLY REPORT STATS ─────────────────────────────────────────────────────────
 function renderWeeklyStats() {
   const salesTotal = entries.reduce((a, e) => a + e.total_services, 0);
@@ -1627,6 +1718,7 @@ function switchView(v) {
     renderWeeklyExpSummary();
     renderWeeklyVehicleSummary();
     renderWeekRangeLabel();
+    renderRangeStats();
   }
 }
 
@@ -1704,7 +1796,7 @@ function resetForm() {
 function confirmClear() {
   const totalPending = entries.length + Object.keys(attendance).length + expenses.length;
   if (totalPending === 0) return;
-  if (confirm(`Clear all pending sales, attendance & pay, and expenses for this week? This cannot be undone.`)) {
+  if (confirm(`Clear all pending sales, attendance & pay, and expenses for this month? This cannot be undone.`)) {
     entries = [];
     attendance = {};
     expenses = [];
@@ -1896,11 +1988,11 @@ function buildAndDownload() {
     }
 
     const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Ewenesu_CarWash_WeeklyReport_${dateStr}.xlsx`);
+    XLSX.writeFile(wb, `Ewenesu_CarWash_MonthlyReport_${dateStr}.xlsx`);
 
-    // After successful download, offer to clear everything for the new week
+    // After successful download, offer to clear everything for the new month
     setTimeout(() => {
-      if (confirm('Download complete! ✓\n\nClear this week\'s sales, attendance & pay, and expenses now that they\'ve been saved to the report?')) {
+      if (confirm('Download complete! ✓\n\nClear this month\'s sales, attendance & pay, and expenses now that they\'ve been saved to the report?')) {
         entries = [];
         attendance = {};
         expenses = [];
@@ -1923,7 +2015,7 @@ function buildAndDownload() {
   }
 
   btn.disabled = false;
-  btn.textContent = '⬇ Download Weekly Report';
+  btn.textContent = '⬇ Download Monthly Report';
 }
 
 // ── BOOT ───────────────────────────────────────────────────────────────────────
