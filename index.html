@@ -600,8 +600,22 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div id="revVehicleBreakdown"></div>
     </div>
 
-    <div style="font-size:11px;color:var(--text3);text-align:center;padding:4px 8px 0;line-height:1.4;">
+    <div style="font-size:11px;color:var(--text3);text-align:center;padding:4px 8px 0 8px;line-height:1.4;">
       Revenue history is kept on this device permanently, even after you clear the monthly sales data.
+    </div>
+
+    <!-- Sales entry list -->
+    <div class="section-header">Sales Entries</div>
+    <input class="input" id="salesSearch" type="text" placeholder="Search by plate (searches your full year of history)…" autocomplete="off" style="margin-bottom:10px;" oninput="filterSalesEntries(this.value)">
+
+    <div id="syncEmpty" class="empty-state">
+      <div class="empty-icon">✅</div>
+      <strong>No pending sales entries</strong>
+      <p style="margin-top:8px;font-size:13px;color:var(--text3);">Add entries in the New Entry tab, or search above to look up any entry from the past year.</p>
+    </div>
+
+    <div id="syncEntries" class="hidden">
+      <div id="entryList"></div>
     </div>
 
   </div>
@@ -704,20 +718,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="card hidden" id="weeklyVehicleCard">
       <div class="card-title">Vehicle Types This Month</div>
       <div id="weeklyVehicleSummary"></div>
-    </div>
-
-    <!-- Sales entry list -->
-    <div class="section-header">Sales Entries</div>
-    <input class="input" id="salesSearch" type="text" placeholder="Search by plate (searches your full year of history)…" autocomplete="off" style="margin-bottom:10px;" oninput="filterSalesEntries(this.value)">
-
-    <div id="syncEmpty" class="empty-state">
-      <div class="empty-icon">✅</div>
-      <strong>No pending sales entries</strong>
-      <p style="margin-top:8px;font-size:13px;color:var(--text3);">Add entries in the New Entry tab, or search above to look up any entry from the past year.</p>
-    </div>
-
-    <div id="syncEntries" class="hidden">
-      <div id="entryList"></div>
     </div>
 
   </div>
@@ -1898,9 +1898,9 @@ function switchView(v) {
   } else if (v === 'revenue') {
     document.getElementById('viewRevenue').classList.add('active');
     renderRevenueTab();
+    renderEntryList();
   } else {
     document.getElementById('viewSync').classList.add('active');
-    renderEntryList();
     renderWeeklyStats();
     renderWeeklyAttSummary();
     renderWeeklyExpSummary();
