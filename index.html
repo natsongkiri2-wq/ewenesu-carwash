@@ -354,15 +354,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
 
 /* ── REVENUE TAB ──────────────────────────────────── */
-.rev-period-row { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; }
-.rev-period-row::-webkit-scrollbar { display: none; }
-.rev-period-chip {
-  flex: 1; text-align: center; padding: 9px 6px; border-radius: 11px;
-  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
-  border: 1.5px solid var(--border); background: var(--card); color: var(--text2);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-}
-.rev-period-chip.active { background: var(--green); border-color: var(--green); color: #fff; }
 .rev-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .rev-trend-wrap { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding: 4px 2px 0; overflow-x: auto; }
 .rev-trend-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1 0 20px; min-width: 20px; height: 100%; }
@@ -561,11 +552,18 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   <!-- REVENUE VIEW -->
   <div class="body view" id="viewRevenue">
 
-    <div class="rev-period-row" id="revPeriodRow">
-      <button type="button" class="rev-period-chip" data-period="today" onclick="selectRevenuePeriod('today')">Today</button>
-      <button type="button" class="rev-period-chip" data-period="7" onclick="selectRevenuePeriod('7')">7 Days</button>
-      <button type="button" class="rev-period-chip" data-period="30" onclick="selectRevenuePeriod('30')">30 Days</button>
-      <button type="button" class="rev-period-chip" data-period="all" onclick="selectRevenuePeriod('all')">All Time</button>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="grid2">
+        <div class="field" style="margin-bottom:0;">
+          <label>From</label>
+          <input class="input" id="revFrom" type="date" onchange="renderRevenueTab()">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>To</label>
+          <input class="input" id="revTo" type="date" onchange="renderRevenueTab()">
+        </div>
+      </div>
+      <button type="button" class="attendant-chip" onclick="setRevenueAllTime()" style="margin-top:12px;">All Time</button>
     </div>
 
     <div class="rev-stats-grid">
@@ -780,7 +778,6 @@ let expenses = loadExpenses();
 let xlsxData = null;
 let selectedAttDate = todayStr();
 let revenueLog = loadRevenueLog();
-let revenuePeriod = 'today';
 ensureRevenueLog();
 
 let historyEntries    = loadHistoryEntries();
@@ -798,6 +795,15 @@ document.getElementById('timeInput').value = pad2(now.getHours()) + ':' + pad2(n
 document.getElementById('entryDate').value = todayStr();
 document.getElementById('expDate').value = todayStr();
 setRangeThisWeek();
+
+// Default the Revenue tab's date picker to the last 7 days.
+(function initRevenueRangeDefaults() {
+  const to = new Date(todayStr() + 'T00:00:00');
+  const from = new Date(to);
+  from.setDate(from.getDate() - 6);
+  document.getElementById('revFrom').value = toLocalDateStr(from);
+  document.getElementById('revTo').value = toLocalDateStr(to);
+})();
 
 populateSelect('vehicleType', VEHICLE_TYPES, 'Select type…');
 populateSelect('brand', VEHICLE_BRANDS, 'Select brand…');
@@ -1747,19 +1753,17 @@ function serviceMeta(key) {
   return SERVICES.find(x => x.key === key) || { icon: '🧽', color: '#0B5E45' };
 }
 
-// Returns an array of date strings (oldest → newest) for the selected period.
-function getRevenueDateRange(period) {
-  const dates = Object.keys(revenueLog).sort();
-  if (dates.length === 0) return [];
-  if (period === 'all') return dates;
+// Returns an array of date strings (oldest → newest) between from and to inclusive.
+function getRevenueDateRange(from, to) {
+  if (!from || !to) return [];
+  if (from > to) { [from, to] = [to, from]; } // tolerate reversed picks
 
-  const today = new Date(todayStr() + 'T00:00:00');
-  let days = period === 'today' ? 1 : Number(period);
   const range = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
+  let d = new Date(from + 'T00:00:00');
+  const end = new Date(to + 'T00:00:00');
+  while (d <= end) {
     range.push(toLocalDateStr(d));
+    d.setDate(d.getDate() + 1);
   }
   return range;
 }
@@ -1778,17 +1782,21 @@ function aggregateRevenue(dates) {
   return agg;
 }
 
-function selectRevenuePeriod(period) {
-  revenuePeriod = period;
+// Sets the picker to span every day currently in the permanent revenue log.
+function setRevenueAllTime() {
+  const dates = Object.keys(revenueLog).sort();
+  const from = dates.length ? dates[0] : todayStr();
+  document.getElementById('revFrom').value = from;
+  document.getElementById('revTo').value = todayStr();
   renderRevenueTab();
 }
 
 function renderRevenueTab() {
-  document.querySelectorAll('.rev-period-chip').forEach(chip =>
-    chip.classList.toggle('active', chip.dataset.period === revenuePeriod)
-  );
+  const fromEl = document.getElementById('revFrom');
+  const toEl = document.getElementById('revTo');
+  if (!fromEl.value || !toEl.value) return;
 
-  const dates = getRevenueDateRange(revenuePeriod);
+  const dates = getRevenueDateRange(fromEl.value, toEl.value);
   const agg = aggregateRevenue(dates);
   const outstanding = Math.max(0, agg.total - agg.paid);
 
