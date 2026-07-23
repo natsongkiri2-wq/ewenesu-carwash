@@ -19,10 +19,8 @@
   --green-light: #13A876;
   --green-pale:  #E2F5EE;
   --green-glow:  #5DCAAA;
-  --purple:      #6A1B9A;
-  --purple-pale: #F3E5F5;
-  --bg:          #ECE8DE;
-  --card:        #F7F1E6;
+  --bg:          #F4F7F5;
+  --card:        #FFFFFF;
   --border:      #D9E5DF;
   --text:        #0D2318;
   --text2:       #4A6858;
@@ -78,15 +76,13 @@ body {
 .today-count { font-size: 11px; color: #8EDFC0; margin-top: 2px; }
 
 /* ── TABS ────────────────────────────────────────── */
-.tabs { display: flex; gap: 2px; margin-top: 4px; overflow-x: auto; scrollbar-width: none; }
-.tabs::-webkit-scrollbar { display: none; }
+.tabs { display: flex; gap: 4px; margin-top: 4px; }
 .tab {
-  flex: 1 1 0; min-width: 0; padding: 9px 2px;
-  font-family: 'Syne', sans-serif; font-size: 9.5px; font-weight: 700;
+  flex: 1; padding: 10px 8px;
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
   border: none; cursor: pointer; border-radius: 12px 12px 0 0;
   transition: all 0.2s;
   background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75);
-  white-space: nowrap;
 }
 .tab.active { background: var(--bg); color: var(--green); }
 
@@ -120,46 +116,15 @@ body {
 .input:focus { outline: none; border-color: var(--green-glow); box-shadow: 0 0 0 3px rgba(93,202,170,0.15); }
 .input.plate { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-select.input {
-  appearance: none; -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234A6858' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
-  padding-right: 34px;
-}
-input[type="time"].input { font-family: 'DM Sans', sans-serif; }
-
-/* ── ATTENDANT / PRESET CHIPS ────────────────────── */
-.attendant-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.attendant-chip {
-  padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
-  border: 1.5px solid var(--border); background: var(--bg); color: var(--text2);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-}
-.attendant-chip.active { background: var(--green); border-color: var(--green); color: #fff; }
-.attendant-chip.add-new { border-style: dashed; color: var(--green-mid); }
-.attendant-empty-hint { font-size: 12px; color: var(--text3); display: block; margin-bottom: 8px; }
-
-/* ── DATE NAV BAR ─────────────────────────────────── */
-.date-bar {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--green-pale); border-radius: 12px; padding: 10px 12px;
-  margin-bottom: 12px; font-size: 12px; color: var(--green);
-}
-.date-bar-names { flex: 1; font-weight: 600; text-align: center; }
-.date-bar-edit {
-  font-size: 11px; font-weight: 700; color: var(--green-mid);
-  background: none; border: none; cursor: pointer; text-decoration: underline;
-  padding: 2px; white-space: nowrap;
-}
 
 /* ── SERVICE ROWS ────────────────────────────────── */
 .svc-row {
+  display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
   border: 1.5px solid var(--border); background: var(--bg);
   transition: all 0.15s;
 }
 .svc-row.active { border-color: var(--svc-color); background: color-mix(in srgb, var(--svc-color) 8%, white); }
-.svc-main { display: flex; align-items: center; gap: 10px; }
 .svc-icon { font-size: 17px; flex-shrink: 0; width: 22px; }
 .svc-label { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); transition: color 0.15s; line-height: 1.3; }
 .svc-row.active .svc-label { color: var(--svc-color); font-weight: 600; }
@@ -173,37 +138,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 }
 .svc-row.active .svc-input { border-color: var(--svc-color); color: var(--svc-color); }
 .svc-input:focus { outline: none; }
-.svc-presets { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; padding-left: 32px; }
-.preset-chip {
-  padding: 5px 11px; border-radius: 8px; font-size: 12px; font-weight: 700;
-  font-family: 'Syne', sans-serif; border: 1.5px solid var(--border); background: white;
-  color: var(--text2); cursor: pointer; transition: all 0.12s;
-}
-.preset-chip.selected { background: var(--svc-color); border-color: var(--svc-color); color: #fff; }
-
-/* ── ATTENDANCE ROWS ─────────────────────────────── */
-.att-row {
-  padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
-  border: 1.5px solid var(--border); background: var(--bg);
-  transition: all 0.15s;
-}
-.att-row.active { border-color: var(--purple); background: color-mix(in srgb, var(--purple) 6%, white); }
-.att-main { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.att-dot { font-size: 10px; color: var(--text3); }
-.att-row.active .att-dot { color: var(--purple); }
-.att-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
-.att-status { font-size: 11px; font-weight: 700; color: var(--text3); }
-.att-row.active .att-status { color: var(--purple); }
-.att-pay { display: flex; gap: 10px; margin-top: 10px; padding-left: 20px; }
-.att-pay-field { flex: 1; }
-.att-pay-field label { display: block; font-size: 10px; color: var(--text2); margin-bottom: 3px; font-weight: 600; }
-.att-input {
-  width: 100%; padding: 8px 10px; border-radius: 8px;
-  border: 1.5px solid var(--border); font-family: 'Syne', sans-serif;
-  font-weight: 700; font-size: 14px; background: white; color: var(--text);
-  -webkit-appearance: none;
-}
-.att-input:focus { outline: none; border-color: var(--purple); }
 
 /* ── TOTAL ───────────────────────────────────────── */
 .total-bar {
@@ -236,7 +170,28 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .alert.error { background: #FDECEC; border: 1px solid #F5AAAA; color: #8B1A1A; }
 .alert.success { background: #E2F5EE; border: 1px solid #5DCAAA; color: #085041; text-align: center; font-weight: 600; }
 .alert.info { background: #E3F2FD; border: 1px solid #90CAF9; color: #0D47A1; text-align: center; }
+.alert.warning { background: #FFF3E0; border: 1px solid #FFB74D; color: #E65100; }
 .hidden { display: none !important; }
+
+/* ── EDIT MODE BANNER ────────────────────────────── */
+.edit-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; background: #FFF3E0; border: 1.5px solid #FFB74D;
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
+}
+.edit-banner-text { font-size: 13px; font-weight: 700; color: #E65100; }
+.edit-banner-cancel {
+  border: none; background: rgba(230,81,0,0.12); color: #E65100;
+  font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 8px;
+  cursor: pointer; white-space: nowrap;
+}
+
+/* ── PLATE DUPLICATE WARNING ─────────────────────── */
+.plate-warning {
+  font-size: 12px; font-weight: 600; color: #E65100;
+  background: #FFF3E0; border: 1px solid #FFB74D; border-radius: 8px;
+  padding: 7px 10px; margin-top: 6px; line-height: 1.4;
+}
 
 /* ── SAVE BUTTON ─────────────────────────────────── */
 .btn-save {
@@ -249,8 +204,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 }
 .btn-save:active { transform: scale(0.98); }
 .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-save.editing { background: linear-gradient(135deg, #E65100, #FF8F00); box-shadow: 0 4px 16px rgba(230,81,0,0.3); }
 
-/* ── SYNC / WEEKLY VIEW ──────────────────────────── */
+/* ── SYNC VIEW ───────────────────────────────────── */
 .pending-badge {
   display: inline-block; background: #FF6F00; color: #fff;
   border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700;
@@ -282,12 +238,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   border: 1.5px solid #E57373; cursor: pointer;
   background: transparent; color: #C62828; margin-bottom: 12px;
 }
-.btn-backup {
-  width: 100%; padding: 12px; border-radius: 12px;
-  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
-  border: 1.5px solid var(--green-mid); cursor: pointer;
-  background: transparent; color: var(--green-mid); margin-bottom: 10px;
-}
 
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .stat-box {
@@ -295,34 +245,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   border-radius: 12px; padding: 12px; text-align: center;
 }
 .stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
-.stat-val { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--green); }
-.stat-val.negative { color: #C62828; }
-
-/* ── SUMMARY ROWS (staff pay / expense categories) ── */
-.staff-breakdown-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 4px; border-bottom: 1px solid var(--border); font-size: 13px;
-}
-.staff-breakdown-row:last-child { border-bottom: none; }
-.staff-breakdown-name { font-weight: 600; color: var(--text); }
-.staff-breakdown-meta { color: var(--text3); font-size: 11px; margin-left: 6px; }
-.staff-breakdown-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--green); }
-
-/* ── ATTENDANCE WEEKLY BREAKDOWN (per person, per day) ───────────── */
-.att-summary-person { margin-bottom: 16px; }
-.att-summary-person:last-child { margin-bottom: 0; }
-.att-summary-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 4px; border-bottom: 2px solid var(--purple-pale);
-}
-.att-summary-name { font-weight: 700; color: var(--text); font-size: 13px; }
-.att-summary-days { color: var(--text3); font-size: 11px; margin-left: 6px; font-weight: 500; }
-.att-summary-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--purple); font-size: 15px; }
-.att-day-row { padding: 8px 4px 8px 14px; border-bottom: 1px dashed var(--border); }
-.att-day-row:last-child { border-bottom: none; }
-.att-day-top { display: flex; justify-content: space-between; align-items: center; }
-.att-day-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--green); font-size: 13px; }
-.att-day-detail { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.stat-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--green); }
 
 /* ── ENTRY LIST ──────────────────────────────────── */
 .entry-card {
@@ -334,45 +257,24 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .entry-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .entry-plate { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; color: var(--green); letter-spacing: 1px; }
 .entry-desc { font-size: 13px; color: var(--text2); }
+.entry-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .entry-total { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: var(--green); white-space: nowrap; }
-.entry-tags { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.entry-actions { display: flex; gap: 6px; }
+.entry-action-btn {
+  border: none; border-radius: 7px; font-size: 11px; font-weight: 700;
+  padding: 4px 9px; cursor: pointer;
+}
+.entry-edit-btn { background: #E3F2FD; color: #0D47A1; }
+.entry-del-btn { background: #FDECEC; color: #8B1A1A; }
+.entry-tags { display: flex; gap: 5px; flex-wrap: wrap; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
 .tag-time { background: var(--bg); color: var(--text2); }
 .tag-paid { background: #FFF8E1; color: #E65100; }
-.tag-outstanding { background: #FDECEC; color: #8B1A1A; }
 .tag-date { background: #E8EAF6; color: #283593; font-size: 10px; }
-.tag-delete {
-  margin-left: auto; font-size: 11px; font-weight: 700; color: #C62828;
-  background: none; border: none; cursor: pointer; text-decoration: underline; padding: 2px;
-}
+.tag-dup { background: #FDECEC; color: #8B1A1A; }
 
 .empty-state { text-align: center; padding: 50px 20px; color: var(--text2); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
-
-/* ── REVENUE TAB ──────────────────────────────────── */
-.rev-period-row { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; }
-.rev-period-row::-webkit-scrollbar { display: none; }
-.rev-period-chip {
-  flex: 1; text-align: center; padding: 9px 6px; border-radius: 11px;
-  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
-  border: 1.5px solid var(--border); background: var(--card); color: var(--text2);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-}
-.rev-period-chip.active { background: var(--green); border-color: var(--green); color: #fff; }
-.rev-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-.rev-trend-wrap { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding: 4px 2px 0; overflow-x: auto; }
-.rev-trend-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1 0 20px; min-width: 20px; height: 100%; }
-.rev-trend-bar { width: 100%; max-width: 22px; background: linear-gradient(180deg, var(--green-light), var(--green)); border-radius: 5px 5px 2px 2px; transition: height 0.2s; min-height: 2px; }
-.rev-trend-bar.empty { background: var(--border); }
-.rev-trend-label { font-size: 8.5px; color: var(--text3); margin-top: 5px; font-weight: 600; white-space: nowrap; }
-.rev-bar-row { margin-bottom: 10px; }
-.rev-bar-row:last-child { margin-bottom: 0; }
-.rev-bar-top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin-bottom: 4px; }
-.rev-bar-name { font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
-.rev-bar-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--green); }
-.rev-bar-track { height: 7px; background: var(--bg); border-radius: 5px; overflow: hidden; }
-.rev-bar-fill { height: 100%; border-radius: 5px; transition: width 0.3s; }
-.rev-empty-note { font-size: 13px; color: var(--text3); text-align: center; padding: 10px 0; }
 
 /* ── SECTION HEADER ──────────────────────────────── */
 .section-header {
@@ -403,56 +305,42 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       </div>
     </div>
     <div class="tabs">
-      <button class="tab active" data-tab="form" onclick="switchView('form')">New Entry</button>
-      <button class="tab" data-tab="attendance" onclick="switchView('attendance')">Attendance</button>
-      <button class="tab" data-tab="expenses" onclick="switchView('expenses')">Expenses</button>
-      <button class="tab" data-tab="revenue" onclick="switchView('revenue')">Revenue</button>
-      <button class="tab" data-tab="sync" onclick="switchView('sync')">
-        Monthly
+      <button class="tab active" onclick="switchView('form')">New Entry</button>
+      <button class="tab" id="syncTab" onclick="switchView('sync')">
+        End of Day
         <span class="pending-badge hidden" id="pendingBadge">0</span>
       </button>
     </div>
   </div>
 
-  <!-- FORM VIEW (SALES) -->
+  <!-- FORM VIEW -->
   <div class="body view active" id="viewForm">
+
+    <div class="edit-banner hidden" id="editBanner">
+      <span class="edit-banner-text" id="editBannerText">✏️ Editing entry</span>
+      <button class="edit-banner-cancel" onclick="cancelEdit()">Cancel</button>
+    </div>
 
     <div class="card">
       <div class="card-title">Vehicle Details</div>
       <div class="field">
-        <label>Date</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input class="input" id="entryDate" type="date" style="flex:1;" onchange="updateEntryDateTodayBtn()">
-          <button type="button" class="attendant-chip" id="entryDateTodayBtn" onclick="setEntryDateToday()" style="white-space:nowrap;display:none;">Today</button>
-        </div>
-      </div>
-      <div class="field">
         <label>Registration Number</label>
-        <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-      </div>
-      <div class="field">
-        <label>Vehicle Type</label>
-        <select class="input" id="vehicleType" onchange="toggleOtherField('vehicleType')"></select>
-        <input class="input hidden" id="vehicleTypeOther" type="text" placeholder="Enter vehicle type" autocomplete="off" style="margin-top:8px;">
+        <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="checkPlateDuplicate()">
+        <div id="plateWarning" class="plate-warning hidden"></div>
       </div>
       <div class="grid2">
         <div class="field">
           <label>Brand</label>
-          <select class="input" id="brand" onchange="toggleOtherField('brand')"></select>
-          <input class="input hidden" id="brandOther" type="text" placeholder="Enter brand" autocomplete="off" style="margin-top:8px;">
+          <input class="input" id="brand" type="text" placeholder="e.g. Toyota" autocomplete="off">
         </div>
         <div class="field">
           <label>Model</label>
-          <select class="input" id="model" onchange="toggleOtherField('model')"></select>
-          <input class="input hidden" id="modelOther" type="text" placeholder="Enter model" autocomplete="off" style="margin-top:8px;">
+          <input class="input" id="model" type="text" placeholder="e.g. Hilux" autocomplete="off">
         </div>
       </div>
       <div class="field">
         <label>Time</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input class="input" id="timeInput" type="time" style="flex:1;">
-          <button type="button" class="attendant-chip" onclick="setTimeNow()" style="white-space:nowrap;">Now</button>
-        </div>
+        <input class="input" id="timeInput" type="text" placeholder="e.g. 9:00am" autocomplete="off">
       </div>
     </div>
 
@@ -469,251 +357,56 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="paid-row">
       <span class="paid-label">💰 Amount Paid</span>
       <span style="font-size:11px;color:#E65100;font-weight:700;">VT</span>
-      <input class="paid-input" id="paid" type="number" placeholder="0" min="0" step="50" inputmode="numeric" oninput="updateOutstandingHint()">
+      <input class="paid-input" id="paid" type="number" placeholder="0" min="0" step="50" inputmode="numeric">
     </div>
-    <div id="outstandingHint" class="hidden" style="font-size:12px;color:#C62828;font-weight:600;margin:-6px 0 12px;padding-left:4px;"></div>
 
     <div id="alertBox" class="hidden"></div>
     <button class="btn-save" id="saveBtn" onclick="handleSave()">Save Entry</button>
   </div>
 
-  <!-- ATTENDANCE VIEW -->
-  <div class="body view" id="viewAttendance">
-
-    <div class="date-bar">
-      <button type="button" class="date-bar-edit" onclick="shiftAttDate(-1)">‹ Prev</button>
-      <span class="date-bar-names" id="attDateLabel">Today</span>
-      <button type="button" class="date-bar-edit" onclick="shiftAttDate(1)">Next ›</button>
-    </div>
-    <button type="button" class="attendant-chip" id="attTodayBtn" onclick="jumpAttToday()" style="margin-bottom:12px;display:none;">Jump to Today</button>
-
-    <div class="card">
-      <div class="card-title" id="attCardTitle">Attendance & Pay — Today</div>
-      <div id="attRows"></div>
-      <button type="button" class="attendant-chip add-new" onclick="addAttendant()" style="margin-top:4px;">+ Add Attendant</button>
-      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Enter each person's salary and bonus for the day — since rates differ per person, these are typed in manually and tallied up when you download the monthly report. Use the date range on the Monthly tab to check a single week's pay before payout.</div>
-      <div id="attAlertBox" class="hidden" style="margin-top:12px;"></div>
-      <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAttendance()">Save Attendance</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">This Period — Presence & Pay</div>
-      <div id="attWeekSummary">
-        <p style="font-size:13px;color:var(--text3);">No attendance recorded yet this period.</p>
-      </div>
-    </div>
-
-    <div class="section-header">Recent Attendance</div>
-    <div id="attLog">
-      <div class="empty-state">
-        <div class="empty-icon">🗓️</div>
-        <strong>No attendance recorded yet</strong>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- EXPENSES VIEW -->
-  <div class="body view" id="viewExpenses">
-
-    <div class="card">
-      <div class="card-title">Add Expense</div>
-      <div class="field">
-        <label>Date</label>
-        <input class="input" id="expDate" type="date">
-      </div>
-      <div class="field">
-        <label>Category</label>
-        <input class="input" id="expCategory" type="text" placeholder="e.g. Soap & Chemicals" autocomplete="off">
-        <div class="attendant-row" id="expPresetsRow" style="margin-top:8px;"></div>
-      </div>
-      <div class="field">
-        <label>Amount (VT)</label>
-        <input class="input" id="expAmount" type="number" placeholder="0" min="0" step="50" inputmode="numeric">
-      </div>
-      <div class="field">
-        <label>Notes (optional)</label>
-        <input class="input" id="expNotes" type="text" placeholder="e.g. 5L Dawn dish soap" autocomplete="off">
-      </div>
-      <div id="expAlertBox" class="hidden"></div>
-      <button class="btn-save" onclick="handleSaveExpense()">Save Expense</button>
-    </div>
-
-    <div class="total-bar">
-      <span class="total-label">This Period's Expenses</span>
-      <span class="total-value" id="expWeekTotal">VT 0</span>
-    </div>
-
-    <div class="section-header">Pending Expenses</div>
-    <div id="expEmpty" class="empty-state">
-      <div class="empty-icon">🧾</div>
-      <strong>No expenses recorded yet</strong>
-      <p style="margin-top:8px;font-size:13px;color:var(--text3);">Add this period's expenses above</p>
-    </div>
-    <div id="expList" class="hidden"></div>
-
-  </div>
-
-  <!-- REVENUE VIEW -->
-  <div class="body view" id="viewRevenue">
-
-    <div class="rev-period-row" id="revPeriodRow">
-      <button type="button" class="rev-period-chip" data-period="today" onclick="selectRevenuePeriod('today')">Today</button>
-      <button type="button" class="rev-period-chip" data-period="7" onclick="selectRevenuePeriod('7')">7 Days</button>
-      <button type="button" class="rev-period-chip" data-period="30" onclick="selectRevenuePeriod('30')">30 Days</button>
-      <button type="button" class="rev-period-chip" data-period="all" onclick="selectRevenuePeriod('all')">All Time</button>
-    </div>
-
-    <div class="rev-stats-grid">
-      <div class="stat-box">
-        <div class="stat-label">Total Revenue</div>
-        <div class="stat-val" id="revTotalRevenue">VT 0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Vehicles Washed</div>
-        <div class="stat-val" id="revVehicleCount">0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Amount Paid</div>
-        <div class="stat-val" id="revPaid">VT 0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Outstanding</div>
-        <div class="stat-val" id="revOutstanding">VT 0</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Daily Trend</div>
-      <div class="rev-trend-wrap" id="revTrendWrap"></div>
-    </div>
-
-    <div class="card" id="revServiceCard">
-      <div class="card-title">By Service Type</div>
-      <div id="revServiceBreakdown"></div>
-    </div>
-
-    <div class="card" id="revVehicleCard">
-      <div class="card-title">By Vehicle Type</div>
-      <div id="revVehicleBreakdown"></div>
-    </div>
-
-    <div style="font-size:11px;color:var(--text3);text-align:center;padding:4px 8px 0;line-height:1.4;">
-      Revenue history is kept on this device permanently, even after you clear the monthly sales data.
-    </div>
-
-  </div>
-
-  <!-- SYNC / MONTHLY REPORT VIEW -->
+  <!-- SYNC / END OF DAY VIEW -->
   <div class="body view" id="viewSync">
 
-    <!-- Week range indicator -->
-    <div class="date-bar" id="weekRangeBar" style="display:none;">
-      <span class="date-bar-names" id="weekRangeLabel">Covering —</span>
-    </div>
-
-    <!-- Info notice -->
+    <!-- Offline notice -->
     <div class="alert info" id="offlineInfo" style="margin-bottom:12px;">
-      📅 Sales, attendance & pay, and expenses build up here through the month. At month's end, download the full report and clear to start fresh.
-    </div>
-
-    <!-- Weekly payout check -->
-    <div class="card">
-      <div class="card-title">Check a Week (for Payout)</div>
-      <div class="grid2">
-        <div class="field">
-          <label>From</label>
-          <input class="input" id="rangeFrom" type="date" onchange="renderRangeStats()">
-        </div>
-        <div class="field">
-          <label>To</label>
-          <input class="input" id="rangeTo" type="date" onchange="renderRangeStats()">
-        </div>
-      </div>
-      <button type="button" class="attendant-chip" onclick="setRangeThisWeek()" style="margin-bottom:12px;">This Week</button>
-      <div class="stats-grid" style="margin-bottom:0;">
-        <div class="stat-box">
-          <div class="stat-label">Sales</div>
-          <div class="stat-val" id="rangeSales">VT 0</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Salaries + Bonus</div>
-          <div class="stat-val" id="rangeSalaries">VT 0</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Expenses</div>
-          <div class="stat-val" id="rangeExpenses">VT 0</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Net</div>
-          <div class="stat-val" id="rangeNet">VT 0</div>
-        </div>
-      </div>
+      📱 Entries are saved on this device. At end of day, load your register and download the updated file.
     </div>
 
     <!-- Load file -->
     <div class="file-load-card" id="fileLoadCard" onclick="document.getElementById('fileInput').click()">
       <div class="file-icon">📂</div>
-      <strong id="fileLoadLabel">Load Existing Sales Register</strong>
-      <p id="fileLoadSub">Tap to load your Ewenesu_CarWash_Register.xlsx<br>New sales will be appended to it — attendance & expenses get their own sheets each month</p>
+      <strong id="fileLoadLabel">Load Existing Register</strong>
+      <p id="fileLoadSub">Tap to load your Ewenesu_CarWash_Register.xlsx<br>New entries will be appended to it</p>
       <input type="file" id="fileInput" accept=".xlsx" class="hidden" onchange="handleFileLoad(event)">
     </div>
 
     <!-- Stats -->
     <div class="stats-grid">
       <div class="stat-box">
-        <div class="stat-label">Sales This Month</div>
+        <div class="stat-label">Today's Sales</div>
         <div class="stat-val" id="statSales">VT 0</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Salaries + Bonus</div>
-        <div class="stat-val" id="statSalaries">VT 0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Expenses</div>
-        <div class="stat-val" id="statExpenses">VT 0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Net</div>
-        <div class="stat-val" id="statNet">VT 0</div>
+        <div class="stat-label">Pending Entries</div>
+        <div class="stat-val" id="statPending">0</div>
       </div>
     </div>
 
     <!-- Actions -->
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
-      ⬇ Download Monthly Report
+      ⬇ Download Updated Register
     </button>
-    <button class="btn-backup" onclick="exportBackup()">💾 Export Backup (JSON)</button>
-    <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
+    <button class="btn-clear" onclick="confirmClear()">🗑 Clear All Saved Entries</button>
 
-    <!-- Attendance summary -->
-    <div class="card hidden" id="weeklyAttCard">
-      <div class="card-title">Attendance & Pay This Month</div>
-      <div id="weeklyAttSummary"></div>
-    </div>
-
-    <!-- Expenses summary -->
-    <div class="card hidden" id="weeklyExpCard">
-      <div class="card-title">Expenses This Month (by Category)</div>
-      <div id="weeklyExpSummary"></div>
-    </div>
-
-    <!-- Vehicle type breakdown -->
-    <div class="card hidden" id="weeklyVehicleCard">
-      <div class="card-title">Vehicle Types This Month</div>
-      <div id="weeklyVehicleSummary"></div>
-    </div>
-
-    <!-- Sales entry list -->
+    <!-- Entry list -->
     <div id="syncEmpty" class="empty-state">
       <div class="empty-icon">✅</div>
-      <strong>No pending sales entries</strong>
+      <strong>No pending entries</strong>
       <p style="margin-top:8px;font-size:13px;color:var(--text3);">Add entries in the New Entry tab</p>
     </div>
 
     <div id="syncEntries" class="hidden">
-      <div class="section-header">Sales Entries</div>
-      <input class="input" id="salesSearch" type="text" placeholder="Search by plate…" autocomplete="off" style="margin-bottom:10px;" oninput="filterSalesEntries(this.value)">
+      <div class="section-header">Saved Entries</div>
       <div id="entryList"></div>
     </div>
 
@@ -724,63 +417,28 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 <script>
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
-const STORAGE_KEY    = 'ewenesu_entries';
-const STAFF_KEY       = 'ewenesu_staff';
-const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
-const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on monthly download
-const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — never cleared
-
-// Default preset prices per service (VT). These are just starting points so
-// the app is usable immediately — edit the numbers below to match your
-// actual price list if they don't line up with what you charge.
+const STORAGE_KEY = 'ewenesu_entries';
 const SERVICES = [
-  { key: "full_wash",        label: "Full Wash & Interior Clean", icon: "🚿", color: "#0B5E45", presets: [1000, 1500, 2000] },
-  { key: "exterior_wash",    label: "Exterior Wash Only",         icon: "💧", color: "#1565C0", presets: [500, 800, 1000] },
-  { key: "interior_clean",   label: "Interior Clean Only",        icon: "🪣", color: "#5E35B1", presets: [500, 800, 1000] },
-  { key: "tire_clean",       label: "Tire Clean Only",            icon: "⚙️", color: "#E65100", presets: [300, 500, 700] },
-  { key: "vaccume",          label: "Vacuum",                     icon: "🌀", color: "#00695C", presets: [300, 500, 700] },
-  { key: "interior_polish",  label: "Interior Polish",            icon: "✨", color: "#AD1457", presets: [500, 1000, 1500] },
-  { key: "wheel_polish",     label: "Wheel Polish",               icon: "🔩", color: "#283593", presets: [300, 600, 900] },
+  { key: "full_wash",        label: "Full Wash & Interior Clean", icon: "🚿", color: "#0B5E45" },
+  { key: "exterior_wash",    label: "Exterior Wash Only",         icon: "💧", color: "#1565C0" },
+  { key: "interior_clean",   label: "Interior Clean Only",        icon: "🪣", color: "#5E35B1" },
+  { key: "tire_clean",       label: "Tire Clean Only",            icon: "⚙️", color: "#E65100" },
+  { key: "vaccume",          label: "Vacuum",                     icon: "🌀", color: "#00695C" },
+  { key: "interior_polish",  label: "Interior Polish",            icon: "✨", color: "#AD1457" },
+  { key: "wheel_polish",     label: "Wheel Polish",               icon: "🔩", color: "#283593" },
 ];
-
-// Starter attendant list is empty — tap "+ Add" in the app to add real
-// names. The list is saved on the device so this only needs doing once.
-const DEFAULT_STAFF = [];
-
-// Quick-fill category chips for the Expenses tab. Tap one to fill the
-// category field — edit this list to match categories you actually use.
-const EXPENSE_PRESETS = ['Soap & Chemicals', 'Water', 'Fuel', 'Equipment', 'Wages Advance', 'Other'];
-
-// Dropdown options for the New Entry form. Each list ends with "Other",
-// which reveals a text box for anything not on the list. Edit these to
-// match what actually comes through the wash.
-const VEHICLE_TYPES  = ['Car', 'Van', 'SUV', 'Pickup/Truck', 'Motorbike', 'Bus', 'Other'];
-const VEHICLE_BRANDS = ['Toyota', 'Nissan', 'Mitsubishi', 'Isuzu', 'Mazda', 'Ford', 'Hyundai', 'Kia', 'Suzuki', 'Honda', 'Other'];
-const VEHICLE_MODELS = ['Hilux', 'Land Cruiser', 'Prado', 'Corolla', 'Vitz', 'RAV4', 'Hiace', 'Surf', 'Navara', 'X-Trail', 'Patrol', 'L200', 'Pajero', 'Outlander', 'Triton', 'D-Max', 'Other'];
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let entries = loadEntries();
-let staff = loadStaff();
-let attendance = loadAttendance();
-let expenses = loadExpenses();
 let xlsxData = null;
-let selectedAttDate = todayStr();
-let revenueLog = loadRevenueLog();
-let revenuePeriod = 'today';
-ensureRevenueLog();
+let editingEntryId = null; // set when the form is editing an existing entry
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 const now = new Date();
 document.getElementById('headerDate').textContent =
   now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-document.getElementById('timeInput').value = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
-document.getElementById('entryDate').value = todayStr();
-document.getElementById('expDate').value = todayStr();
-setRangeThisWeek();
-
-populateSelect('vehicleType', VEHICLE_TYPES, 'Select type…');
-populateSelect('brand', VEHICLE_BRANDS, 'Select brand…');
-populateSelect('model', VEHICLE_MODELS, 'Select model…');
+document.getElementById('timeInput').value =
+  now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
 
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -799,35 +457,16 @@ SERVICES.forEach(svc => {
   row.className = 'svc-row';
   row.id = `row_${svc.key}`;
   row.style.setProperty('--svc-color', svc.color);
-  const presetChips = svc.presets.map(p =>
-    `<button type="button" class="preset-chip" data-price="${p}" onclick="applyPreset('${svc.key}', ${p})">VT ${p.toLocaleString()}</button>`
-  ).join('');
   row.innerHTML = `
-    <div class="svc-main">
-      <span class="svc-icon">${svc.icon}</span>
-      <span class="svc-label">${svc.label}</span>
-      <div class="svc-right">
-        <span class="svc-currency">VT</span>
-        <input class="svc-input" id="svc_${svc.key}" type="number"
-          placeholder="0" min="0" step="50" inputmode="numeric" oninput="onSvcInput(this,'${svc.key}')">
-      </div>
-    </div>
-    <div class="svc-presets">${presetChips}</div>`;
+    <span class="svc-icon">${svc.icon}</span>
+    <span class="svc-label">${svc.label}</span>
+    <div class="svc-right">
+      <span class="svc-currency">VT</span>
+      <input class="svc-input" id="svc_${svc.key}" type="number"
+        placeholder="0" min="0" step="50" inputmode="numeric" oninput="onSvcInput(this,'${svc.key}')">
+    </div>`;
   container.appendChild(row);
 });
-
-// Build expense presets
-renderExpensePresets();
-
-// Build attendance tab
-renderAttDateLabel();
-renderAttRows();
-renderAttWeekSummary();
-renderAttLog();
-
-// Build expenses tab
-renderExpenseList();
-updateExpenseWeekTotal();
 
 // ── PERSISTENCE ───────────────────────────────────────────────────────────────
 function loadEntries() {
@@ -837,482 +476,8 @@ function loadEntries() {
 function saveEntries() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
-function loadStaff() {
-  try {
-    const s = JSON.parse(localStorage.getItem(STAFF_KEY));
-    return Array.isArray(s) ? s : [...DEFAULT_STAFF];
-  } catch { return [...DEFAULT_STAFF]; }
-}
-function saveStaff() {
-  localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
-}
-function loadAttendance() {
-  try {
-    const a = JSON.parse(localStorage.getItem(ATTENDANCE_KEY));
-    return (a && typeof a === 'object') ? a : {};
-  } catch { return {}; }
-}
-function saveAttendance() {
-  localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(attendance));
-}
-function loadExpenses() {
-  try { return JSON.parse(localStorage.getItem(EXPENSES_KEY)) || []; }
-  catch { return []; }
-}
-function saveExpenses() {
-  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
-}
-
-// ── REVENUE LOG (permanent, never cleared by weekly download) ────────────────
-// Shape: { "2026-07-21": { total, paid, count, services: {key: vt}, vehicleTypes: {type: vt} }, ... }
-function loadRevenueLog() {
-  try {
-    const r = JSON.parse(localStorage.getItem(REVENUE_LOG_KEY));
-    return (r && typeof r === 'object') ? r : null;
-  } catch { return null; }
-}
-function saveRevenueLog() {
-  localStorage.setItem(REVENUE_LOG_KEY, JSON.stringify(revenueLog));
-}
-
-// One-time backfill: if this device has never had a revenue log before,
-// seed it from whatever sales entries are currently pending, so existing
-// data isn't lost the first time this feature runs.
-function ensureRevenueLog() {
-  if (revenueLog !== null) return;
-  revenueLog = {};
-  entries.forEach(e => addEntryToRevenueLog(e));
-  saveRevenueLog();
-}
-
-function emptyRevenueDay() {
-  return { total: 0, paid: 0, count: 0, services: {}, vehicleTypes: {} };
-}
-
-function addEntryToRevenueLog(e) {
-  if (!revenueLog[e.date]) revenueLog[e.date] = emptyRevenueDay();
-  const day = revenueLog[e.date];
-  day.total += Number(e.total_services) || 0;
-  day.paid  += Number(e.paid) || 0;
-  day.count += 1;
-  SERVICES.forEach(s => {
-    const v = Number(e[s.key]) || 0;
-    if (v > 0) day.services[s.key] = (day.services[s.key] || 0) + v;
-  });
-  const vt = e.vehicle_type || 'Not specified';
-  day.vehicleTypes[vt] = (day.vehicleTypes[vt] || 0) + (Number(e.total_services) || 0);
-}
-
-function removeEntryFromRevenueLog(e) {
-  const day = revenueLog[e.date];
-  if (!day) return;
-  day.total = Math.max(0, day.total - (Number(e.total_services) || 0));
-  day.paid  = Math.max(0, day.paid - (Number(e.paid) || 0));
-  day.count = Math.max(0, day.count - 1);
-  SERVICES.forEach(s => {
-    const v = Number(e[s.key]) || 0;
-    if (v > 0 && day.services[s.key]) {
-      day.services[s.key] = Math.max(0, day.services[s.key] - v);
-      if (day.services[s.key] === 0) delete day.services[s.key];
-    }
-  });
-  const vt = e.vehicle_type || 'Not specified';
-  if (day.vehicleTypes[vt]) {
-    day.vehicleTypes[vt] = Math.max(0, day.vehicleTypes[vt] - (Number(e.total_services) || 0));
-    if (day.vehicleTypes[vt] === 0) delete day.vehicleTypes[vt];
-  }
-  if (day.count === 0) delete revenueLog[e.date];
-}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function escapeAttr(s) { return s.replace(/'/g, "\\'"); }
-// IMPORTANT: use the device's LOCAL calendar date, not toISOString() (which is
-// always UTC). Vanuatu is UTC+11 with no daylight saving, so toISOString()
-// would report the wrong (previous) date for roughly the first 11 hours of
-// every local day. All "what date is it" logic must go through this.
-function toLocalDateStr(d) {
-  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-}
-function todayStr() { return toLocalDateStr(new Date()); }
-function shortDate(dateStr) { return dateStr.slice(2); } // '2026-07-14' -> '26-07-14'
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-// ── VEHICLE DETAIL DROPDOWNS ─────────────────────────────────────────────────────
-function populateSelect(id, options, placeholder) {
-  const sel = document.getElementById(id);
-  sel.innerHTML = `<option value="">${placeholder}</option>` +
-    options.map(o => `<option value="${o}">${o}</option>`).join('');
-}
-function toggleOtherField(baseId) {
-  const select = document.getElementById(baseId);
-  const other = document.getElementById(baseId + 'Other');
-  const isOther = select.value === 'Other';
-  other.classList.toggle('hidden', !isOther);
-  if (isOther) other.focus();
-  else other.value = '';
-}
-function fieldValue(baseId) {
-  const select = document.getElementById(baseId);
-  if (select.value === 'Other') return document.getElementById(baseId + 'Other').value.trim();
-  return select.value;
-}
-function resetDropdown(baseId) {
-  document.getElementById(baseId).value = '';
-  document.getElementById(baseId + 'Other').value = '';
-  document.getElementById(baseId + 'Other').classList.add('hidden');
-}
-
-// ── TIME PICKER ───────────────────────────────────────────────────────────────
-function setTimeNow() {
-  const d = new Date();
-  document.getElementById('timeInput').value = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-}
-function formatTime12(hhmm) {
-  if (!hhmm) return '';
-  const [h, m] = hhmm.split(':').map(Number);
-  let h12 = h % 12;
-  if (h12 === 0) h12 = 12;
-  return `${h12}:${pad2(m)}${h >= 12 ? 'pm' : 'am'}`;
-}
-
-// ── ENTRY DATE ────────────────────────────────────────────────────────────────
-function setEntryDateToday() {
-  document.getElementById('entryDate').value = todayStr();
-  updateEntryDateTodayBtn();
-}
-function updateEntryDateTodayBtn() {
-  const isToday = document.getElementById('entryDate').value === todayStr();
-  document.getElementById('entryDateTodayBtn').style.display = isToday ? 'none' : 'block';
-}
-
-function refreshAll() {
-  updateDashboard();
-  renderWeeklyStats();
-  renderWeeklyAttSummary();
-  renderWeeklyExpSummary();
-  renderWeeklyVehicleSummary();
-  renderWeekRangeLabel();
-  renderRangeStats();
-}
-
-// ── ATTENDANCE TAB ──────────────────────────────────────────────────────────────
-function fmtAttDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function renderAttDateLabel() {
-  const isToday = selectedAttDate === todayStr();
-  document.getElementById('attDateLabel').textContent = fmtAttDate(selectedAttDate) + (isToday ? ' (Today)' : '');
-  document.getElementById('attCardTitle').textContent = 'Attendance & Pay — ' + (isToday ? 'Today' : fmtAttDate(selectedAttDate));
-  document.getElementById('attTodayBtn').style.display = isToday ? 'none' : 'block';
-}
-
-function shiftAttDate(delta) {
-  const d = new Date(selectedAttDate + 'T00:00:00');
-  d.setDate(d.getDate() + delta);
-  selectedAttDate = toLocalDateStr(d);
-  renderAttDateLabel();
-  renderAttRows();
-}
-
-function jumpAttToday() {
-  selectedAttDate = todayStr();
-  renderAttDateLabel();
-  renderAttRows();
-}
-
-function renderAttRows() {
-  const container = document.getElementById('attRows');
-  const dayRecord = attendance[selectedAttDate] || {};
-
-  if (staff.length === 0) {
-    container.innerHTML = `<span class="attendant-empty-hint">No attendants yet — tap "+ Add Attendant" below to set up your team</span>`;
-    return;
-  }
-
-  container.innerHTML = staff.map(name => {
-    const rec = dayRecord[name];
-    const present = !!rec;
-    return `
-    <div class="att-row ${present ? 'active' : ''}" id="attrow_${cssId(name)}">
-      <div class="att-main" onclick="toggleAttendance('${escapeAttr(name)}')">
-        <span class="att-dot">${present ? '●' : '○'}</span>
-        <span class="att-name">${name}</span>
-        <span class="att-status">${present ? 'Present' : 'Absent'}</span>
-        <button type="button" class="tag-delete" onclick="event.stopPropagation(); removeAttendant('${escapeAttr(name)}')">Remove</button>
-      </div>
-      ${present ? `
-      <div class="att-pay">
-        <div class="att-pay-field">
-          <label>Salary (VT)</label>
-          <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
-            value="${rec.salary || ''}" placeholder="0"
-            oninput="updateAttPay('${escapeAttr(name)}','salary',this.value)">
-        </div>
-        <div class="att-pay-field">
-          <label>Bonus (VT)</label>
-          <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
-            value="${rec.bonus || ''}" placeholder="0"
-            oninput="updateAttPay('${escapeAttr(name)}','bonus',this.value)">
-        </div>
-      </div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function cssId(name) { return name.replace(/[^a-zA-Z0-9]/g, '_'); }
-
-function toggleAttendance(name) {
-  if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
-  if (attendance[selectedAttDate][name]) {
-    delete attendance[selectedAttDate][name];
-    if (Object.keys(attendance[selectedAttDate]).length === 0) delete attendance[selectedAttDate];
-  } else {
-    attendance[selectedAttDate][name] = { present: true, salary: 0, bonus: 0 };
-  }
-  saveAttendance();
-  renderAttRows();
-  renderAttWeekSummary();
-  renderAttLog();
-  refreshAll();
-}
-
-function updateAttPay(name, field, value) {
-  if (!attendance[selectedAttDate] || !attendance[selectedAttDate][name]) return;
-  const num = parseFloat(value);
-  attendance[selectedAttDate][name][field] = isNaN(num) ? 0 : num;
-  saveAttendance();
-  // Don't re-render attRows here — it would rebuild inputs and lose focus.
-  renderAttWeekSummary();
-  renderAttLog();
-  renderWeeklyStats();
-  renderWeeklyAttSummary();
-}
-
-function addAttendant() {
-  const name = prompt('Attendant name:');
-  if (!name) return;
-  const trimmed = name.trim();
-  if (!trimmed) return;
-  if (!staff.includes(trimmed)) {
-    staff.push(trimmed);
-    saveStaff();
-  }
-  if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
-  if (!attendance[selectedAttDate][trimmed]) {
-    attendance[selectedAttDate][trimmed] = { present: true, salary: 0, bonus: 0 };
-    saveAttendance();
-  }
-  renderAttRows();
-  renderAttWeekSummary();
-  renderAttLog();
-  refreshAll();
-}
-
-function removeAttendant(name) {
-  if (!confirm(`Remove ${name} from your team? This deletes them from staff and clears their attendance records for this period.`)) return;
-  staff = staff.filter(s => s !== name);
-  saveStaff();
-  Object.keys(attendance).forEach(date => {
-    if (attendance[date][name]) {
-      delete attendance[date][name];
-      if (Object.keys(attendance[date]).length === 0) delete attendance[date];
-    }
-  });
-  saveAttendance();
-  renderAttRows();
-  renderAttWeekSummary();
-  renderAttLog();
-  refreshAll();
-}
-
-function handleSaveAttendance() {
-  saveAttendance();
-  renderAttWeekSummary();
-  renderAttLog();
-  refreshAll();
-  showAttAlert('✓ Attendance saved for ' + fmtAttDate(selectedAttDate) + '!', 'success');
-}
-
-function getAttendanceSummary() {
-  const byStaff = {};
-  Object.entries(attendance).forEach(([date, dayObj]) => {
-    Object.entries(dayObj).forEach(([name, rec]) => {
-      if (!byStaff[name]) byStaff[name] = { days: 0, pay: 0, breakdown: [] };
-      const salary = Number(rec.salary) || 0;
-      const bonus = Number(rec.bonus) || 0;
-      byStaff[name].days += 1;
-      byStaff[name].pay += salary + bonus;
-      byStaff[name].breakdown.push({ date, salary, bonus, total: salary + bonus });
-    });
-  });
-  Object.values(byStaff).forEach(d => d.breakdown.sort((a, b) => a.date.localeCompare(b.date)));
-  return Object.entries(byStaff).sort((a, b) => b[1].pay - a[1].pay);
-}
-
-function renderAttendanceSummaryHTML(rows) {
-  if (rows.length === 0) return null;
-  return rows.map(([name, d]) => `
-    <div class="att-summary-person">
-      <div class="att-summary-header">
-        <span class="att-summary-name">${name}<span class="att-summary-days">${d.days} day${d.days !== 1 ? 's' : ''}</span></span>
-        <span class="att-summary-total">VT ${Math.round(d.pay).toLocaleString()}</span>
-      </div>
-      ${d.breakdown.map(b => `
-        <div class="att-day-row">
-          <div class="att-day-top">
-            <span class="tag tag-date">${b.date}</span>
-            <span class="att-day-total">VT ${b.total.toLocaleString()}</span>
-          </div>
-          <div class="att-day-detail">Salary VT ${b.salary.toLocaleString()} · Bonus VT ${b.bonus.toLocaleString()}</div>
-        </div>`).join('')}
-    </div>`).join('');
-}
-
-function renderAttWeekSummary() {
-  const rows = getAttendanceSummary();
-  const el = document.getElementById('attWeekSummary');
-  el.innerHTML = renderAttendanceSummaryHTML(rows) ||
-    `<p style="font-size:13px;color:var(--text3);">No attendance recorded yet this week.</p>`;
-}
-
-function renderAttLog() {
-  const el = document.getElementById('attLog');
-  const dates = Object.keys(attendance).sort((a, b) => b.localeCompare(a)).slice(0, 31);
-  if (dates.length === 0) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🗓️</div>
-        <strong>No attendance recorded yet</strong>
-      </div>`;
-    return;
-  }
-  el.innerHTML = dates.map(date => {
-    const namesStr = Object.entries(attendance[date]).map(([name, rec]) => {
-      const total = (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
-      return total > 0 ? `${name} (VT ${total.toLocaleString()})` : name;
-    }).join(', ');
-    return `
-    <div class="entry-card">
-      <div class="entry-tags" style="margin-bottom:2px;">
-        <span class="tag tag-date">${date}</span>
-      </div>
-      <div style="font-size:13px;color:var(--text);font-weight:600;">${namesStr}</div>
-    </div>`;
-  }).join('');
-}
-
-// ── EXPENSES TAB ──────────────────────────────────────────────────────────────
-function renderExpensePresets() {
-  const row = document.getElementById('expPresetsRow');
-  row.innerHTML = EXPENSE_PRESETS.map(cat =>
-    `<button type="button" class="attendant-chip" onclick="fillExpenseCategory('${escapeAttr(cat)}')">${cat}</button>`
-  ).join('');
-}
-function fillExpenseCategory(cat) {
-  document.getElementById('expCategory').value = cat;
-}
-
-function showExpAlert(msg, type) {
-  const box = document.getElementById('expAlertBox');
-  box.className = `alert ${type}`;
-  box.textContent = msg;
-  box.classList.remove('hidden');
-  if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2800);
-}
-
-function handleSaveExpense() {
-  const date = document.getElementById('expDate').value || todayStr();
-  const category = document.getElementById('expCategory').value.trim();
-  const amount = parseFloat(document.getElementById('expAmount').value) || 0;
-  const notes = document.getElementById('expNotes').value.trim();
-
-  if (!category) { showExpAlert('Enter a category for this expense.', 'error'); return; }
-  if (amount <= 0) { showExpAlert('Enter an amount greater than 0.', 'error'); return; }
-
-  expenses.unshift({ id: Date.now(), date, category, amount, notes });
-  saveExpenses();
-  renderExpenseList();
-  updateExpenseWeekTotal();
-  refreshAll();
-
-  document.getElementById('expCategory').value = '';
-  document.getElementById('expAmount').value = '';
-  document.getElementById('expNotes').value = '';
-  document.getElementById('expDate').value = todayStr();
-  showExpAlert('✓ Expense saved!', 'success');
-}
-
-function deleteExpense(id) {
-  if (!confirm('Delete this expense?')) return;
-  expenses = expenses.filter(e => e.id !== id);
-  saveExpenses();
-  renderExpenseList();
-  updateExpenseWeekTotal();
-  refreshAll();
-}
-
-function renderExpenseList() {
-  const list = document.getElementById('expList');
-  if (expenses.length === 0) {
-    document.getElementById('expEmpty').classList.remove('hidden');
-    list.classList.add('hidden');
-    return;
-  }
-  document.getElementById('expEmpty').classList.add('hidden');
-  list.classList.remove('hidden');
-  list.innerHTML = expenses.map(e => `
-    <div class="entry-card">
-      <div class="entry-top">
-        <div class="entry-left">
-          <span class="entry-plate">${e.category}</span>
-          ${e.notes ? `<span class="entry-desc">${e.notes}</span>` : ''}
-        </div>
-        <span class="entry-total">VT ${Number(e.amount).toLocaleString()}</span>
-      </div>
-      <div class="entry-tags">
-        <span class="tag tag-date">${e.date}</span>
-        <button type="button" class="tag-delete" onclick="deleteExpense(${e.id})">Delete</button>
-      </div>
-    </div>`).join('');
-}
-
-function getExpenseCategoryTotals() {
-  const totals = {};
-  expenses.forEach(e => {
-    const cat = e.category || 'Other';
-    totals[cat] = (totals[cat] || 0) + (Number(e.amount) || 0);
-  });
-  return Object.entries(totals).sort((a, b) => b[1] - a[1]);
-}
-
-function updateExpenseWeekTotal() {
-  const total = expenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
-  document.getElementById('expWeekTotal').textContent = 'VT ' + total.toLocaleString();
-}
-
-// ── PRESET CHIPS (SERVICES) ──────────────────────────────────────────────────────
-function applyPreset(key, price) {
-  const input = document.getElementById(`svc_${key}`);
-  const current = parseFloat(input.value);
-  if (current === price) {
-    // tapping the already-selected preset clears it
-    input.value = '';
-  } else {
-    input.value = price;
-  }
-  onSvcInput(input, key);
-}
-function syncPresetSelection(key) {
-  const row = document.getElementById(`row_${key}`);
-  const val = parseFloat(document.getElementById(`svc_${key}`).value);
-  row.querySelectorAll('.preset-chip').forEach(chip => {
-    chip.classList.toggle('selected', Number(chip.dataset.price) === val);
-  });
-}
-
-// ── SALES HELPERS ───────────────────────────────────────────────────────────────
 function getTotal() {
   return SERVICES.reduce((sum, s) => {
     return sum + (parseFloat(document.getElementById(`svc_${s.key}`).value) || 0);
@@ -1322,7 +487,6 @@ function getTotal() {
 function onSvcInput(input, key) {
   const active = input.value !== '' && Number(input.value) > 0;
   document.getElementById(`row_${key}`).classList.toggle('active', active);
-  syncPresetSelection(key);
   updateTotal();
 }
 
@@ -1330,19 +494,32 @@ function updateTotal() {
   const t = getTotal();
   document.getElementById('totalValue').textContent = 'VT ' + t.toLocaleString();
   document.getElementById('totalBar').classList.toggle('active', t > 0);
-  updateOutstandingHint();
 }
 
-function updateOutstandingHint() {
-  const total = getTotal();
-  const paid = parseFloat(document.getElementById('paid').value) || 0;
-  const outstanding = total - paid;
-  const hint = document.getElementById('outstandingHint');
-  if (total > 0 && outstanding > 0) {
-    hint.textContent = `Outstanding: VT ${outstanding.toLocaleString()}`;
-    hint.classList.remove('hidden');
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+function normalizePlate(v) { return (v || '').trim().toUpperCase(); }
+
+// Find an existing entry for the same plate today (optionally excluding one id)
+function findDuplicateToday(plate, excludeId) {
+  if (!plate) return null;
+  return entries.find(e =>
+    e.date === todayStr() &&
+    normalizePlate(e.plate) === plate &&
+    e.id !== excludeId
+  ) || null;
+}
+
+// Live check while typing the plate field
+function checkPlateDuplicate() {
+  const plateVal = normalizePlate(document.getElementById('plate').value);
+  const box = document.getElementById('plateWarning');
+  const dup = findDuplicateToday(plateVal, editingEntryId);
+  if (dup) {
+    box.textContent = `⚠ ${plateVal} already entered today at ${dup.time || 'an earlier time'} — VT ${dup.total_services.toLocaleString()}`;
+    box.classList.remove('hidden');
   } else {
-    hint.classList.add('hidden');
+    box.classList.add('hidden');
   }
 }
 
@@ -1352,40 +529,19 @@ function updateDashboard() {
 
   document.getElementById('todayTotal').textContent   = 'VT ' + todayTotal.toLocaleString();
   document.getElementById('todayCount').textContent   = today.length + ' vehicle' + (today.length !== 1 ? 's' : '');
-  document.getElementById('syncBtn').disabled =
-    entries.length === 0 && Object.keys(attendance).length === 0 && expenses.length === 0;
+  document.getElementById('statSales').textContent    = 'VT ' + todayTotal.toLocaleString();
+  document.getElementById('statPending').textContent  = entries.length;
+  document.getElementById('syncBtn').disabled         = entries.length === 0;
 
-  const totalPending = entries.length + Object.keys(attendance).length + expenses.length;
   const badge = document.getElementById('pendingBadge');
-  if (totalPending > 0) { badge.textContent = totalPending; badge.classList.remove('hidden'); }
+  if (entries.length > 0) { badge.textContent = entries.length; badge.classList.remove('hidden'); }
   else badge.classList.add('hidden');
 
   renderEntryList();
 }
 
-let salesSearchTerm = '';
-
-function filterSalesEntries(value) {
-  salesSearchTerm = value.trim().toUpperCase();
-  renderEntryList();
-}
-
-function deleteEntry(id) {
-  if (!confirm('Delete this sales entry?')) return;
-  const removed = entries.find(e => e.id === id);
-  entries = entries.filter(e => e.id !== id);
-  saveEntries();
-  if (removed) { removeEntryFromRevenueLog(removed); saveRevenueLog(); }
-  refreshAll();
-  if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
-}
-
 function renderEntryList() {
   const list = document.getElementById('entryList');
-  const filtered = salesSearchTerm
-    ? entries.filter(e => (e.plate || '').toUpperCase().includes(salesSearchTerm))
-    : entries;
-
   if (entries.length === 0) {
     document.getElementById('syncEmpty').classList.remove('hidden');
     document.getElementById('syncEntries').classList.add('hidden');
@@ -1394,18 +550,21 @@ function renderEntryList() {
   document.getElementById('syncEmpty').classList.add('hidden');
   document.getElementById('syncEntries').classList.remove('hidden');
 
-  if (filtered.length === 0) {
-    list.innerHTML = `<p style="font-size:13px;color:var(--text3);text-align:center;padding:16px 0;">No entries match "${salesSearchTerm}".</p>`;
-    return;
-  }
+  // Work out which entries share a plate on the same day, to flag duplicates in the list
+  const dupKeys = {};
+  entries.forEach(e => {
+    const k = e.date + '|' + normalizePlate(e.plate);
+    if (!normalizePlate(e.plate)) return;
+    dupKeys[k] = (dupKeys[k] || 0) + 1;
+  });
 
-  list.innerHTML = filtered.map(e => {
+  list.innerHTML = entries.map((e, idx) => {
     const svcs = SERVICES.filter(s => e[s.key] !== '' && e[s.key] !== undefined && e[s.key] !== null);
     const tags = svcs.map(s =>
       `<span class="tag" style="background:${s.color}18;color:${s.color}">${s.icon} VT ${Number(e[s.key]).toLocaleString()}</span>`
     ).join('');
-    const desc = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ');
-    const outstanding = e.total_services - (Number(e.paid) || 0);
+    const desc = [e.brand, e.model].filter(Boolean).join(' ');
+    const isDup = normalizePlate(e.plate) && dupKeys[e.date + '|' + normalizePlate(e.plate)] > 1;
     return `
     <div class="entry-card">
       <div class="entry-top">
@@ -1413,285 +572,21 @@ function renderEntryList() {
           <span class="entry-plate">${e.plate || '—'}</span>
           ${desc ? `<span class="entry-desc">${desc}</span>` : ''}
         </div>
-        <span class="entry-total">VT ${e.total_services.toLocaleString()}</span>
+        <div class="entry-right">
+          <span class="entry-total">VT ${e.total_services.toLocaleString()}</span>
+          <div class="entry-actions">
+            <button class="entry-action-btn entry-edit-btn" onclick="editEntry(${e.id})">✏️ Edit</button>
+            <button class="entry-action-btn entry-del-btn" onclick="deleteEntry(${e.id})">🗑</button>
+          </div>
+        </div>
       </div>
       <div class="entry-tags">
         <span class="tag tag-date">${e.date}</span>
         ${e.time ? `<span class="tag tag-time">${e.time}</span>` : ''}
         ${e.paid ? `<span class="tag tag-paid">Paid VT ${Number(e.paid).toLocaleString()}</span>` : ''}
-        ${outstanding > 0 ? `<span class="tag tag-outstanding">Owes VT ${outstanding.toLocaleString()}</span>` : ''}
+        ${isDup ? `<span class="tag tag-dup">⚠ Duplicate plate today</span>` : ''}
         ${tags}
-        <button type="button" class="tag-delete" onclick="deleteEntry(${e.id})">Delete</button>
       </div>
-    </div>`;
-  }).join('');
-}
-
-// ── WEEKLY PAYOUT CHECK (custom date range within the current pending month) ──
-function mondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0=Sun..6=Sat
-  const diff = (day === 0) ? -6 : 1 - day; // shift back to Monday
-  d.setDate(d.getDate() + diff);
-  return d;
-}
-
-function setRangeThisWeek() {
-  const today = new Date(todayStr() + 'T00:00:00');
-  const monday = mondayOf(today);
-  document.getElementById('rangeFrom').value = toLocalDateStr(monday);
-  document.getElementById('rangeTo').value = todayStr();
-  renderRangeStats();
-}
-
-function computeRangeTotals(from, to) {
-  const sales = entries
-    .filter(e => e.date >= from && e.date <= to)
-    .reduce((a, e) => a + (Number(e.total_services) || 0), 0);
-
-  let salaries = 0;
-  Object.entries(attendance).forEach(([date, dayObj]) => {
-    if (date >= from && date <= to) {
-      Object.values(dayObj).forEach(rec => {
-        salaries += (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
-      });
-    }
-  });
-
-  const exp = expenses
-    .filter(e => e.date >= from && e.date <= to)
-    .reduce((a, e) => a + (Number(e.amount) || 0), 0);
-
-  return { sales, salaries, exp, net: sales - salaries - exp };
-}
-
-function renderRangeStats() {
-  const fromEl = document.getElementById('rangeFrom');
-  const toEl = document.getElementById('rangeTo');
-  if (!fromEl || !toEl) return; // view not built yet
-  let from = fromEl.value, to = toEl.value;
-  if (!from || !to) return;
-  if (from > to) { [from, to] = [to, from]; } // tolerate reversed picks
-
-  const r = computeRangeTotals(from, to);
-  document.getElementById('rangeSales').textContent = 'VT ' + r.sales.toLocaleString();
-  document.getElementById('rangeSalaries').textContent = 'VT ' + r.salaries.toLocaleString();
-  document.getElementById('rangeExpenses').textContent = 'VT ' + r.exp.toLocaleString();
-  const netEl = document.getElementById('rangeNet');
-  netEl.textContent = 'VT ' + r.net.toLocaleString();
-  netEl.classList.toggle('negative', r.net < 0);
-}
-
-// ── WEEKLY REPORT STATS ─────────────────────────────────────────────────────────
-function renderWeeklyStats() {
-  const salesTotal = entries.reduce((a, e) => a + e.total_services, 0);
-  let salaryTotal = 0;
-  Object.values(attendance).forEach(dayObj => {
-    Object.values(dayObj).forEach(rec => {
-      salaryTotal += (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
-    });
-  });
-  const expenseTotal = expenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
-  const net = salesTotal - salaryTotal - expenseTotal;
-
-  document.getElementById('statSales').textContent    = 'VT ' + salesTotal.toLocaleString();
-  document.getElementById('statSalaries').textContent = 'VT ' + salaryTotal.toLocaleString();
-  document.getElementById('statExpenses').textContent = 'VT ' + expenseTotal.toLocaleString();
-  const netEl = document.getElementById('statNet');
-  netEl.textContent = 'VT ' + net.toLocaleString();
-  netEl.classList.toggle('negative', net < 0);
-}
-
-function renderWeeklyAttSummary() {
-  const card = document.getElementById('weeklyAttCard');
-  const rows = getAttendanceSummary();
-  const html = renderAttendanceSummaryHTML(rows);
-  if (!html) { card.classList.add('hidden'); return; }
-  card.classList.remove('hidden');
-  document.getElementById('weeklyAttSummary').innerHTML = html;
-}
-
-function renderWeeklyExpSummary() {
-  const card = document.getElementById('weeklyExpCard');
-  const rows = getExpenseCategoryTotals();
-  if (rows.length === 0) { card.classList.add('hidden'); return; }
-  card.classList.remove('hidden');
-  document.getElementById('weeklyExpSummary').innerHTML = rows.map(([cat, total]) => `
-    <div class="staff-breakdown-row">
-      <span class="staff-breakdown-name">${cat}</span>
-      <span class="staff-breakdown-total">VT ${total.toLocaleString()}</span>
-    </div>`).join('');
-}
-
-function fmtShortDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-}
-
-function renderWeekRangeLabel() {
-  const bar = document.getElementById('weekRangeBar');
-  const allDates = [
-    ...entries.map(e => e.date),
-    ...Object.keys(attendance),
-    ...expenses.map(e => e.date)
-  ].sort();
-  if (allDates.length === 0) { bar.style.display = 'none'; return; }
-  bar.style.display = 'flex';
-  const start = allDates[0], end = allDates[allDates.length - 1];
-  document.getElementById('weekRangeLabel').textContent =
-    start === end ? `Covering ${fmtShortDate(start)}` : `Covering ${fmtShortDate(start)} – ${fmtShortDate(end)}`;
-}
-
-function getVehicleTypeTotals() {
-  const totals = {};
-  entries.forEach(e => {
-    const type = e.vehicle_type || 'Not specified';
-    if (!totals[type]) totals[type] = { count: 0, total: 0 };
-    totals[type].count += 1;
-    totals[type].total += e.total_services;
-  });
-  return Object.entries(totals).sort((a, b) => b[1].count - a[1].count);
-}
-
-function renderWeeklyVehicleSummary() {
-  const card = document.getElementById('weeklyVehicleCard');
-  const rows = getVehicleTypeTotals();
-  if (rows.length === 0) { card.classList.add('hidden'); return; }
-  card.classList.remove('hidden');
-  document.getElementById('weeklyVehicleSummary').innerHTML = rows.map(([type, d]) => `
-    <div class="staff-breakdown-row">
-      <span class="staff-breakdown-name">${type}<span class="staff-breakdown-meta">${d.count} wash${d.count !== 1 ? 'es' : ''}</span></span>
-      <span class="staff-breakdown-total">VT ${d.total.toLocaleString()}</span>
-    </div>`).join('');
-}
-
-// ── REVENUE TAB ──────────────────────────────────────────────────────────────
-function serviceLabel(key) {
-  const s = SERVICES.find(x => x.key === key);
-  return s ? s.label : key;
-}
-function serviceMeta(key) {
-  return SERVICES.find(x => x.key === key) || { icon: '🧽', color: '#0B5E45' };
-}
-
-// Returns an array of date strings (oldest → newest) for the selected period.
-function getRevenueDateRange(period) {
-  const dates = Object.keys(revenueLog).sort();
-  if (dates.length === 0) return [];
-  if (period === 'all') return dates;
-
-  const today = new Date(todayStr() + 'T00:00:00');
-  let days = period === 'today' ? 1 : Number(period);
-  const range = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    range.push(toLocalDateStr(d));
-  }
-  return range;
-}
-
-function aggregateRevenue(dates) {
-  const agg = { total: 0, paid: 0, count: 0, services: {}, vehicleTypes: {} };
-  dates.forEach(date => {
-    const day = revenueLog[date];
-    if (!day) return;
-    agg.total += day.total;
-    agg.paid  += day.paid;
-    agg.count += day.count;
-    Object.entries(day.services || {}).forEach(([k, v]) => agg.services[k] = (agg.services[k] || 0) + v);
-    Object.entries(day.vehicleTypes || {}).forEach(([k, v]) => agg.vehicleTypes[k] = (agg.vehicleTypes[k] || 0) + v);
-  });
-  return agg;
-}
-
-function selectRevenuePeriod(period) {
-  revenuePeriod = period;
-  renderRevenueTab();
-}
-
-function renderRevenueTab() {
-  document.querySelectorAll('.rev-period-chip').forEach(chip =>
-    chip.classList.toggle('active', chip.dataset.period === revenuePeriod)
-  );
-
-  const dates = getRevenueDateRange(revenuePeriod);
-  const agg = aggregateRevenue(dates);
-  const outstanding = Math.max(0, agg.total - agg.paid);
-
-  document.getElementById('revTotalRevenue').textContent = 'VT ' + agg.total.toLocaleString();
-  document.getElementById('revVehicleCount').textContent = agg.count.toLocaleString();
-  document.getElementById('revPaid').textContent = 'VT ' + agg.paid.toLocaleString();
-  document.getElementById('revOutstanding').textContent = 'VT ' + outstanding.toLocaleString();
-
-  renderRevenueTrend(dates);
-  renderRevenueServiceBreakdown(agg);
-  renderRevenueVehicleBreakdown(agg);
-}
-
-function renderRevenueTrend(dates) {
-  const wrap = document.getElementById('revTrendWrap');
-  if (dates.length === 0) {
-    wrap.innerHTML = `<p class="rev-empty-note" style="width:100%;">No sales logged yet — trend appears once entries are saved.</p>`;
-    return;
-  }
-  // For "All Time" with lots of days, keep the chart readable by capping bars shown.
-  const shown = dates.length > 60 ? dates.slice(-60) : dates;
-  const totals = shown.map(d => (revenueLog[d] ? revenueLog[d].total : 0));
-  const max = Math.max(1, ...totals);
-
-  wrap.innerHTML = shown.map((d, i) => {
-    const total = totals[i];
-    const heightPct = Math.round((total / max) * 100);
-    const label = new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-    return `
-      <div class="rev-trend-col" title="${label}: VT ${total.toLocaleString()}">
-        <div class="rev-trend-bar ${total === 0 ? 'empty' : ''}" style="height:${total === 0 ? 3 : Math.max(4, heightPct)}%;"></div>
-        <div class="rev-trend-label">${shown.length > 14 ? '' : label}</div>
-      </div>`;
-  }).join('');
-}
-
-function renderRevenueServiceBreakdown(agg) {
-  const card = document.getElementById('revServiceCard');
-  const rows = Object.entries(agg.services).sort((a, b) => b[1] - a[1]);
-  if (rows.length === 0) {
-    card.querySelector('#revServiceBreakdown').innerHTML =
-      `<p class="rev-empty-note">No services recorded for this period.</p>`;
-    return;
-  }
-  const max = Math.max(...rows.map(r => r[1]));
-  document.getElementById('revServiceBreakdown').innerHTML = rows.map(([key, total]) => {
-    const meta = serviceMeta(key);
-    const pct = Math.round((total / max) * 100);
-    return `
-    <div class="rev-bar-row">
-      <div class="rev-bar-top">
-        <span class="rev-bar-name">${meta.icon} ${serviceLabel(key)}</span>
-        <span class="rev-bar-total">VT ${total.toLocaleString()}</span>
-      </div>
-      <div class="rev-bar-track"><div class="rev-bar-fill" style="width:${pct}%;background:${meta.color};"></div></div>
-    </div>`;
-  }).join('');
-}
-
-function renderRevenueVehicleBreakdown(agg) {
-  const rows = Object.entries(agg.vehicleTypes).sort((a, b) => b[1] - a[1]);
-  if (rows.length === 0) {
-    document.getElementById('revVehicleBreakdown').innerHTML =
-      `<p class="rev-empty-note">No vehicle types recorded for this period.</p>`;
-    return;
-  }
-  const max = Math.max(...rows.map(r => r[1]));
-  document.getElementById('revVehicleBreakdown').innerHTML = rows.map(([type, total]) => {
-    const pct = Math.round((total / max) * 100);
-    return `
-    <div class="rev-bar-row">
-      <div class="rev-bar-top">
-        <span class="rev-bar-name">${type}</span>
-        <span class="rev-bar-total">VT ${total.toLocaleString()}</span>
-      </div>
-      <div class="rev-bar-track"><div class="rev-bar-fill" style="width:${pct}%;background:var(--green);"></div></div>
     </div>`;
   }).join('');
 }
@@ -1699,33 +594,14 @@ function renderRevenueVehicleBreakdown(agg) {
 // ── VIEW SWITCHING ─────────────────────────────────────────────────────────────
 function switchView(v) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-  document.querySelector(`.tab[data-tab="${v}"]`).classList.add('active');
-
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   if (v === 'form') {
+    document.querySelectorAll('.tab')[0].classList.add('active');
     document.getElementById('viewForm').classList.add('active');
-  } else if (v === 'attendance') {
-    document.getElementById('viewAttendance').classList.add('active');
-    renderAttDateLabel();
-    renderAttRows();
-    renderAttWeekSummary();
-    renderAttLog();
-  } else if (v === 'expenses') {
-    document.getElementById('viewExpenses').classList.add('active');
-    renderExpenseList();
-    updateExpenseWeekTotal();
-  } else if (v === 'revenue') {
-    document.getElementById('viewRevenue').classList.add('active');
-    renderRevenueTab();
   } else {
+    document.querySelectorAll('.tab')[1].classList.add('active');
     document.getElementById('viewSync').classList.add('active');
     renderEntryList();
-    renderWeeklyStats();
-    renderWeeklyAttSummary();
-    renderWeeklyExpSummary();
-    renderWeeklyVehicleSummary();
-    renderWeekRangeLabel();
-    renderRangeStats();
   }
 }
 
@@ -1738,27 +614,82 @@ function showAlert(msg, type) {
   if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2800);
 }
 
-function showAttAlert(msg, type) {
-  const box = document.getElementById('attAlertBox');
-  box.className = `alert ${type}`;
-  box.textContent = msg;
-  box.classList.remove('hidden');
-  if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2800);
+// ── EDIT ENTRY ─────────────────────────────────────────────────────────────────
+function editEntry(id) {
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+
+  editingEntryId = id;
+
+  document.getElementById('plate').value = entry.plate || '';
+  document.getElementById('brand').value = entry.brand || '';
+  document.getElementById('model').value = entry.model || '';
+  document.getElementById('timeInput').value = entry.time || '';
+  document.getElementById('paid').value = entry.paid || '';
+
+  SERVICES.forEach(s => {
+    const v = entry[s.key];
+    const input = document.getElementById(`svc_${s.key}`);
+    input.value = (v === '' || v === undefined || v === null) ? '' : v;
+    document.getElementById(`row_${s.key}`).classList.toggle('active', Number(v) > 0);
+  });
+  updateTotal();
+
+  const banner = document.getElementById('editBanner');
+  document.getElementById('editBannerText').textContent = `✏️ Editing entry — ${entry.plate || 'vehicle'}`;
+  banner.classList.remove('hidden');
+
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.textContent = 'Update Entry';
+  saveBtn.classList.add('editing');
+
+  document.getElementById('plateWarning').classList.add('hidden');
+  document.getElementById('alertBox').classList.add('hidden');
+
+  switchView('form');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingEntryId = null;
+  document.getElementById('editBanner').classList.add('hidden');
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.textContent = 'Save Entry';
+  saveBtn.classList.remove('editing');
+  resetForm();
+}
+
+function deleteEntry(id) {
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+  if (!confirm(`Delete entry for ${entry.plate || 'this vehicle'}? This cannot be undone.`)) return;
+  entries = entries.filter(e => e.id !== id);
+  saveEntries();
+  if (editingEntryId === id) cancelEdit();
+  updateDashboard();
 }
 
 // ── SAVE ENTRY ─────────────────────────────────────────────────────────────────
 function handleSave() {
   const plate = document.getElementById('plate').value.trim().toUpperCase();
-  const date = document.getElementById('entryDate').value || todayStr();
-  const vehicleType = fieldValue('vehicleType');
-  const brand = fieldValue('brand');
-  const model = fieldValue('model');
-  const time  = formatTime12(document.getElementById('timeInput').value);
+  const brand = document.getElementById('brand').value.trim();
+  const model = document.getElementById('model').value.trim();
+  const time  = document.getElementById('timeInput').value.trim();
   const paid  = parseFloat(document.getElementById('paid').value) || 0;
   const total = getTotal();
 
   if (!plate && !brand) { showAlert('Enter at least a plate number or vehicle brand.', 'error'); return; }
   if (total === 0)       { showAlert('Add at least one service with an amount.', 'error'); return; }
+
+  // Duplicate-vehicle check — warn if this plate was already logged today
+  const dup = findDuplicateToday(plate, editingEntryId);
+  if (dup) {
+    const ok = confirm(
+      `⚠ ${plate} was already entered today at ${dup.time || 'an earlier time'} ` +
+      `(VT ${dup.total_services.toLocaleString()}).\n\nSave this as another entry anyway?`
+    );
+    if (!ok) return;
+  }
 
   const svcVals = {};
   SERVICES.forEach(s => {
@@ -1766,57 +697,62 @@ function handleSave() {
     svcVals[s.key] = isNaN(v) ? '' : v;
   });
 
-  const entry = {
-    date, plate, vehicle_type: vehicleType, brand, model, time,
-    ...svcVals,
-    total_services: total,
-    paid,
-    id: Date.now(),
-  };
-
-  entries.unshift(entry);
-  saveEntries();         // ← persist to localStorage
-  addEntryToRevenueLog(entry);
-  saveRevenueLog();
-  refreshAll();
-  resetForm();
-  showAlert('✓ Entry saved and stored on device!', 'success');
+  if (editingEntryId) {
+    // Update existing entry, keep its original id/date
+    const idx = entries.findIndex(e => e.id === editingEntryId);
+    if (idx !== -1) {
+      entries[idx] = {
+        ...entries[idx],
+        plate, brand, model, time,
+        ...svcVals,
+        total_services: total,
+        paid,
+      };
+    }
+    editingEntryId = null;
+    document.getElementById('editBanner').classList.add('hidden');
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.textContent = 'Save Entry';
+    saveBtn.classList.remove('editing');
+    saveEntries();
+    updateDashboard();
+    resetForm();
+    showAlert('✓ Entry updated!', 'success');
+  } else {
+    const entry = {
+      date: todayStr(), plate, brand, model, time,
+      ...svcVals,
+      total_services: total,
+      paid,
+      id: Date.now(),
+    };
+    entries.unshift(entry);
+    saveEntries();         // ← persist to localStorage
+    updateDashboard();
+    resetForm();
+    showAlert('✓ Entry saved and stored on device!', 'success');
+  }
 }
 
 function resetForm() {
-  document.getElementById('plate').value = '';
-  document.getElementById('paid').value = '';
-  resetDropdown('vehicleType');
-  resetDropdown('brand');
-  resetDropdown('model');
-  setTimeNow();
-  // Date is intentionally left as-is — handy for entering several
-  // backdated entries for the same earlier day in a row.
+  ['plate','brand','model','paid'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('timeInput').value =
+    new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
   SERVICES.forEach(s => {
     document.getElementById(`svc_${s.key}`).value = '';
     document.getElementById(`row_${s.key}`).classList.remove('active');
-    syncPresetSelection(s.key);
   });
+  document.getElementById('plateWarning').classList.add('hidden');
   updateTotal();
 }
 
 function confirmClear() {
-  const totalPending = entries.length + Object.keys(attendance).length + expenses.length;
-  if (totalPending === 0) return;
-  if (confirm(`Clear all pending sales, attendance & pay, and expenses for this month? This cannot be undone.`)) {
+  if (entries.length === 0) return;
+  if (confirm(`Clear all ${entries.length} saved entries? This cannot be undone.`)) {
     entries = [];
-    attendance = {};
-    expenses = [];
     saveEntries();
-    saveAttendance();
-    saveExpenses();
-    refreshAll();
-    renderAttDateLabel();
-    renderAttRows();
-    renderAttWeekSummary();
-    renderAttLog();
-    renderExpenseList();
-    updateExpenseWeekTotal();
+    if (editingEntryId) cancelEdit();
+    updateDashboard();
   }
 }
 
@@ -1829,190 +765,101 @@ function handleFileLoad(event) {
     xlsxData = ev.target.result;
     document.getElementById('fileLoadCard').classList.add('loaded');
     document.getElementById('fileLoadLabel').textContent = '✓ ' + file.name;
-    document.getElementById('fileLoadSub').textContent   = 'Ready — new sales will be appended when you download';
+    document.getElementById('fileLoadSub').textContent   = 'Ready — new entries will be appended when you download';
   };
   reader.readAsArrayBuffer(file);
 }
 
-// ── BUILD & DOWNLOAD (WEEKLY REPORT) ────────────────────────────────────────────
-function uniqueSheetName(wb, base) {
-  let name = base.slice(0, 31);
-  let n = 2;
-  while (wb.SheetNames.includes(name)) {
-    const suffix = `_${n}`;
-    name = base.slice(0, 31 - suffix.length) + suffix;
-    n++;
-  }
-  return name;
-}
-
-function val(v) {
-  return (v !== '' && v !== null && v !== undefined)
-    ? { v: Number(v), t: 'n' } : null;
-}
-
-function exportBackup() {
-  const hasData = entries.length > 0 || Object.keys(attendance).length > 0 || expenses.length > 0;
-  if (!hasData) { alert('No pending data to back up yet.'); return; }
-
-  const backup = {
-    exported_at: new Date().toISOString(),
-    entries,
-    attendance,
-    expenses,
-    staff,
-  };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Ewenesu_CarWash_Backup_${todayStr()}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
+// ── BUILD & DOWNLOAD ───────────────────────────────────────────────────────────
 function buildAndDownload() {
-  const hasData = entries.length > 0 || Object.keys(attendance).length > 0 || expenses.length > 0;
-  if (!hasData) return;
+  if (entries.length === 0) return;
   const btn = document.getElementById('syncBtn');
   btn.disabled = true;
   btn.textContent = 'Building file...';
 
   try {
-    let wb = xlsxData ? XLSX.read(xlsxData, { type: 'array', cellDates: true }) : XLSX.utils.book_new();
-
-    // ---- SALES SHEET: append to existing "Main Register" or create fresh ----
-    if (entries.length > 0) {
-      let ws = wb.Sheets['Main Register'];
-      if (!ws) {
-        ws = {};
-        ws['B2'] = { v: 'Customer Details', t: 's' };
-        ws['F2'] = { v: 'Car Wash Services', t: 's' };
-        ws['M2'] = { v: 'Total Services', t: 's' };
-        ws['N2'] = { v: 'Paid', t: 's' };
-        const hdrs = {
-          B:'Date', C:'Plate No.', D:'Description', E:'Time',
-          F:'Full Wash & Interior Clean', G:'Exterior Wash Only',
-          H:'Interior Clean Only', I:'Tire Clean Only',
-          J:'Vaccume', K:'Interior Polish', L:'Wheel Polish',
-          M:'Total Services', N:'Paid'
-        };
-        Object.entries(hdrs).forEach(([col, v]) => ws[`${col}3`] = { v: v, t: 's' });
-        ws['!ref'] = 'A1:N3';
-        XLSX.utils.book_append_sheet(wb, ws, 'Main Register');
-      }
-
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:N3');
-      let insertRow = 3;
-      for (let r = 2; r <= range.e.r; r++) {
-        const cell = ws[XLSX.utils.encode_cell({ r, c: 1 })];
-        if (cell && cell.v) insertRow = r + 1;
-      }
-
-      const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
-      sortedEntries.forEach((e, i) => {
-        const r = insertRow + i;
-        const descStr = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ') || null;
-        const plateVal = e.plate ? (isNaN(e.plate) ? e.plate : Number(e.plate)) : null;
-
-        const row = {
-          1:  { v: new Date(e.date + 'T00:00:00'), t: 'd' },
-          2:  plateVal !== null ? { v: plateVal, t: isNaN(plateVal) ? 's' : 'n' } : null,
-          3:  descStr ? { v: descStr, t: 's' } : null,
-          4:  e.time  ? { v: e.time,  t: 's' } : null,
-          5:  val(e.full_wash),
-          6:  val(e.exterior_wash),
-          7:  val(e.interior_clean),
-          8:  val(e.tire_clean),
-          9:  val(e.vaccume),
-          10: val(e.interior_polish),
-          11: val(e.wheel_polish),
-          12: e.total_services ? { v: e.total_services, t: 'n' } : null,
-          13: e.paid ? { v: e.paid, t: 'n' } : null,
-        };
-
-        Object.entries(row).forEach(([cIdx, cell]) => {
-          if (!cell) return;
-          const addr = XLSX.utils.encode_cell({ r, c: Number(cIdx) });
-          if (cell.v instanceof Date) ws[addr] = { v: cell.v, t: 'd', z: 'yyyy-mm-dd' };
-          else ws[addr] = cell;
-        });
-      });
-
-      const newEndRow = insertRow + entries.length - 1;
-      ws['!ref'] = XLSX.utils.encode_range({
-        s: { r: 0, c: 0 },
-        e: { r: Math.max(range.e.r, newEndRow), c: 13 }
-      });
+    let wb;
+    if (xlsxData) {
+      wb = XLSX.read(xlsxData, { type: 'array', cellDates: true });
+    } else {
+      // Build a fresh register matching the template layout
+      wb = XLSX.utils.book_new();
+      const ws = {};
+      ws['B2'] = { v: 'Customer Details', t: 's' };
+      ws['F2'] = { v: 'Car Wash Services', t: 's' };
+      ws['M2'] = { v: 'Total Services', t: 's' };
+      ws['N2'] = { v: 'Paid', t: 's' };
+      const hdrs = {
+        B:'Date', C:'Plate No.', D:'Description', E:'Time',
+        F:'Full Wash & Interior Clean', G:'Exterior Wash Only',
+        H:'Interior Clean Only', I:'Tire Clean Only',
+        J:'Vaccume', K:'Interior Polish', L:'Wheel Polish',
+        M:'Total Services', N:'Paid'
+      };
+      Object.entries(hdrs).forEach(([col, val]) => ws[`${col}3`] = { v: val, t: 's' });
+      ws['!ref'] = 'A1:N3';
+      XLSX.utils.book_append_sheet(wb, ws, 'Main Register');
     }
 
-    // ---- ATTENDANCE & SALARIES SHEET: new sheet each week ----
-    const attDates = Object.keys(attendance).sort();
-    if (attDates.length > 0) {
-      const startD = attDates[0], endD = attDates[attDates.length - 1];
-      const attWs = {};
-      ['Date', 'Attendant', 'Salary (VT)', 'Bonus (VT)', 'Total (VT)'].forEach((h, i) =>
-        attWs[XLSX.utils.encode_cell({ r: 0, c: i })] = { v: h, t: 's' }
-      );
-      let r = 1;
-      attDates.forEach(date => {
-        Object.entries(attendance[date]).forEach(([name, rec]) => {
-          const salary = Number(rec.salary) || 0;
-          const bonus = Number(rec.bonus) || 0;
-          attWs[XLSX.utils.encode_cell({ r, c: 0 })] = { v: new Date(date + 'T00:00:00'), t: 'd', z: 'yyyy-mm-dd' };
-          attWs[XLSX.utils.encode_cell({ r, c: 1 })] = { v: name, t: 's' };
-          attWs[XLSX.utils.encode_cell({ r, c: 2 })] = { v: salary, t: 'n' };
-          attWs[XLSX.utils.encode_cell({ r, c: 3 })] = { v: bonus, t: 'n' };
-          attWs[XLSX.utils.encode_cell({ r, c: 4 })] = { v: salary + bonus, t: 'n' };
-          r++;
-        });
-      });
-      attWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(r - 1, 0), c: 4 } });
-      const attSheetName = uniqueSheetName(wb, `Attendance ${shortDate(startD)} to ${shortDate(endD)}`);
-      XLSX.utils.book_append_sheet(wb, attWs, attSheetName);
+    const ws = wb.Sheets['Main Register'];
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:N3');
+
+    // Find last row with data in col B (Date column, index 1)
+    let insertRow = 3;
+    for (let r = 2; r <= range.e.r; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 1 })];
+      if (cell && cell.v) insertRow = r + 1;
     }
 
-    // ---- EXPENSES SHEET: new sheet each week ----
-    if (expenses.length > 0) {
-      const sortedExp = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
-      const startD = sortedExp[0].date, endD = sortedExp[sortedExp.length - 1].date;
-      const expWs = {};
-      ['Date', 'Category', 'Amount (VT)', 'Notes'].forEach((h, i) =>
-        expWs[XLSX.utils.encode_cell({ r: 0, c: i })] = { v: h, t: 's' }
-      );
-      sortedExp.forEach((e, i) => {
-        const r = i + 1;
-        expWs[XLSX.utils.encode_cell({ r, c: 0 })] = { v: new Date(e.date + 'T00:00:00'), t: 'd', z: 'yyyy-mm-dd' };
-        expWs[XLSX.utils.encode_cell({ r, c: 1 })] = { v: e.category || '', t: 's' };
-        expWs[XLSX.utils.encode_cell({ r, c: 2 })] = { v: Number(e.amount) || 0, t: 'n' };
-        if (e.notes) expWs[XLSX.utils.encode_cell({ r, c: 3 })] = { v: e.notes, t: 's' };
+    // Write entries (oldest first = chronological order)
+    [...entries].reverse().forEach((e, i) => {
+      const r = insertRow + i;
+      const descStr = [e.brand, e.model].filter(Boolean).join(' ') || null;
+      const plateVal = e.plate
+        ? (isNaN(e.plate) ? e.plate : Number(e.plate))
+        : null;
+
+      const row = {
+        1:  { v: new Date(e.date + 'T00:00:00'), t: 'd' },          // B Date
+        2:  plateVal !== null ? { v: plateVal, t: isNaN(plateVal) ? 's' : 'n' } : null, // C Plate
+        3:  descStr ? { v: descStr, t: 's' } : null,                 // D Description
+        4:  e.time  ? { v: e.time,  t: 's' } : null,                 // E Time
+        5:  val(e.full_wash),        // F Full Wash & Interior Clean
+        6:  val(e.exterior_wash),    // G Exterior Wash Only
+        7:  val(e.interior_clean),   // H Interior Clean Only
+        8:  val(e.tire_clean),       // I Tire Clean Only
+        9:  val(e.vaccume),          // J Vaccume
+        10: val(e.interior_polish),  // K Interior Polish
+        11: val(e.wheel_polish),     // L Wheel Polish
+        12: e.total_services ? { v: e.total_services, t: 'n' } : null, // M Total Services
+        13: e.paid ? { v: e.paid, t: 'n' } : null,                  // N Paid
+      };
+
+      Object.entries(row).forEach(([cIdx, cell]) => {
+        if (!cell) return;
+        const addr = XLSX.utils.encode_cell({ r, c: Number(cIdx) });
+        if (cell.v instanceof Date) ws[addr] = { v: cell.v, t: 'd', z: 'yyyy-mm-dd' };
+        else ws[addr] = cell;
       });
-      expWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sortedExp.length, c: 3 } });
-      const expSheetName = uniqueSheetName(wb, `Expenses ${shortDate(startD)} to ${shortDate(endD)}`);
-      XLSX.utils.book_append_sheet(wb, expWs, expSheetName);
-    }
+    });
 
-    const dateStr = todayStr();
-    XLSX.writeFile(wb, `Ewenesu_CarWash_MonthlyReport_${dateStr}.xlsx`);
+    // Expand the sheet range
+    const newEndRow = insertRow + entries.length - 1;
+    ws['!ref'] = XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: Math.max(range.e.r, newEndRow), c: 13 }
+    });
 
-    // After successful download, offer to clear everything for the new month
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Ewenesu_CarWash_Register_${dateStr}.xlsx`);
+
+    // After successful download, offer to clear
     setTimeout(() => {
-      if (confirm('Download complete! ✓\n\nClear this month\'s sales, attendance & pay, and expenses now that they\'ve been saved to the report?')) {
+      if (confirm('Download complete! ✓\n\nClear the saved entries now that they\'ve been added to the register?')) {
         entries = [];
-        attendance = {};
-        expenses = [];
         saveEntries();
-        saveAttendance();
-        saveExpenses();
-        refreshAll();
-        renderAttDateLabel();
-        renderAttRows();
-        renderAttWeekSummary();
-        renderAttLog();
-        renderExpenseList();
-        updateExpenseWeekTotal();
+        if (editingEntryId) cancelEdit();
+        updateDashboard();
       }
     }, 800);
 
@@ -2022,11 +869,16 @@ function buildAndDownload() {
   }
 
   btn.disabled = false;
-  btn.textContent = '⬇ Download Monthly Report';
+  btn.textContent = '⬇ Download Updated Register';
+}
+
+function val(v) {
+  return (v !== '' && v !== null && v !== undefined)
+    ? { v: Number(v), t: 'n' } : null;
 }
 
 // ── BOOT ───────────────────────────────────────────────────────────────────────
-refreshAll();
+updateDashboard();
 
 </script>
 </body>
