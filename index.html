@@ -345,6 +345,10 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   margin-left: auto; font-size: 11px; font-weight: 700; color: #C62828;
   background: none; border: none; cursor: pointer; text-decoration: underline; padding: 2px;
 }
+.tag-payment {
+  font-size: 11px; font-weight: 700; color: var(--green-mid);
+  background: none; border: none; cursor: pointer; text-decoration: underline; padding: 2px;
+}
 
 .empty-state { text-align: center; padding: 50px 20px; color: var(--text2); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
@@ -1504,6 +1508,40 @@ function deleteEntry(id) {
   if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
 }
 
+// Records a payment against an entry — works whether the entry is still in
+// this month's pending list or has already been archived to history, and
+// keeps the permanent revenue log's "paid" total in sync either way.
+function applyPayment(id) {
+  const pendingEntry = entries.find(e => e.id === id);
+  const historyEntry = historyEntries.find(e => e.id === id);
+  const source = pendingEntry || historyEntry;
+  if (!source) return;
+
+  const outstanding = Math.max(0, (Number(source.total_services) || 0) - (Number(source.paid) || 0));
+  const input = prompt(
+    `Apply payment for ${source.plate || 'this vehicle'} (outstanding VT ${outstanding.toLocaleString()}):`,
+    outstanding > 0 ? outstanding : ''
+  );
+  if (input === null) return;
+  const amount = parseFloat(input);
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid payment amount greater than 0.'); return; }
+
+  const newPaid = (Number(source.paid) || 0) + amount;
+  if (pendingEntry) pendingEntry.paid = newPaid;
+  if (historyEntry) historyEntry.paid = newPaid;
+  saveEntries();
+  commitHistory();
+
+  if (revenueLog[source.date]) {
+    revenueLog[source.date].paid = (revenueLog[source.date].paid || 0) + amount;
+    saveRevenueLog();
+  }
+
+  refreshAll();
+  renderEntryList();
+  if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
+}
+
 function renderEntryCard(e, isPending) {
   const svcs = SERVICES.filter(s => e[s.key] !== '' && e[s.key] !== undefined && e[s.key] !== null);
   const tags = svcs.map(s =>
@@ -1526,6 +1564,7 @@ function renderEntryCard(e, isPending) {
       ${e.paid ? `<span class="tag tag-paid">Paid VT ${Number(e.paid).toLocaleString()}</span>` : ''}
       ${outstanding > 0 ? `<span class="tag tag-outstanding">Owes VT ${outstanding.toLocaleString()}</span>` : ''}
       ${tags}
+      ${outstanding > 0 ? `<button type="button" class="tag-payment" onclick="applyPayment(${e.id})">💳 Add Payment</button>` : ''}
       ${isPending ? `<button type="button" class="tag-delete" onclick="deleteEntry(${e.id})">Delete</button>` : ''}
     </div>
   </div>`;
