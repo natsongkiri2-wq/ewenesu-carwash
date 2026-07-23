@@ -421,15 +421,17 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
           <button type="button" class="attendant-chip" id="entryDateTodayBtn" onclick="setEntryDateToday()" style="white-space:nowrap;display:none;">Today</button>
         </div>
       </div>
-      <div class="field">
-        <label>Registration Number</label>
-        <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+      <div class="grid2">
+        <div class="field">
+          <label>Registration Number</label>
+          <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <div class="field">
+          <label>Vehicle Type</label>
+          <select class="input" id="vehicleType" onchange="toggleOtherField('vehicleType')"></select>
+        </div>
       </div>
-      <div class="field">
-        <label>Vehicle Type</label>
-        <select class="input" id="vehicleType" onchange="toggleOtherField('vehicleType')"></select>
-        <input class="input hidden" id="vehicleTypeOther" type="text" placeholder="Enter vehicle type" autocomplete="off" style="margin-top:8px;">
-      </div>
+      <input class="input hidden" id="vehicleTypeOther" type="text" placeholder="Enter vehicle type" autocomplete="off" style="margin:-4px 0 12px;">
       <div class="grid2">
         <div class="field">
           <label>Brand</label>
