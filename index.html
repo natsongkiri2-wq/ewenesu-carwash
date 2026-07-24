@@ -493,18 +493,18 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAttendance()">Save Attendance</button>
     </div>
 
-    <div class="card">
-      <div class="card-title">This Period — Presence & Pay</div>
-      <div id="attWeekSummary">
-        <p style="font-size:13px;color:var(--text3);">No attendance recorded yet this period.</p>
-      </div>
-    </div>
-
     <div class="section-header">Recent Attendance</div>
     <div id="attLog">
       <div class="empty-state">
         <div class="empty-icon">🗓️</div>
         <strong>No attendance recorded yet</strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">This Period — Presence & Pay</div>
+      <div id="attWeekSummary">
+        <p style="font-size:13px;color:var(--text3);">No attendance recorded yet this period.</p>
       </div>
     </div>
 
@@ -703,12 +703,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     </button>
     <button class="btn-backup" onclick="exportBackup()">💾 Export Backup (JSON)</button>
     <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
-
-    <!-- Attendance summary -->
-    <div class="card hidden" id="weeklyAttCard">
-      <div class="card-title">Attendance & Pay This Month</div>
-      <div id="weeklyAttSummary"></div>
-    </div>
 
     <!-- Expenses summary -->
     <div class="card hidden" id="weeklyExpCard">
@@ -1107,7 +1101,6 @@ function updateEntryDateTodayBtn() {
 function refreshAll() {
   updateDashboard();
   renderWeeklyStats();
-  renderWeeklyAttSummary();
   renderWeeklyExpSummary();
   renderWeeklyVehicleSummary();
   renderWeekRangeLabel();
@@ -1210,7 +1203,6 @@ function updateAttPay(name, field, value) {
   renderAttWeekSummary();
   renderAttLog();
   renderWeeklyStats();
-  renderWeeklyAttSummary();
 }
 
 function addAttendant() {
@@ -1683,15 +1675,6 @@ function renderWeeklyStats() {
   netEl.classList.toggle('negative', net < 0);
 }
 
-function renderWeeklyAttSummary() {
-  const card = document.getElementById('weeklyAttCard');
-  const rows = getAttendanceSummary();
-  const html = renderAttendanceSummaryHTML(rows);
-  if (!html) { card.classList.add('hidden'); return; }
-  card.classList.remove('hidden');
-  document.getElementById('weeklyAttSummary').innerHTML = html;
-}
-
 function renderWeeklyExpSummary() {
   const card = document.getElementById('weeklyExpCard');
   const rows = getExpenseCategoryTotals();
@@ -1904,7 +1887,6 @@ function switchView(v) {
   } else {
     document.getElementById('viewSync').classList.add('active');
     renderWeeklyStats();
-    renderWeeklyAttSummary();
     renderWeeklyExpSummary();
     renderWeeklyVehicleSummary();
     renderWeekRangeLabel();
