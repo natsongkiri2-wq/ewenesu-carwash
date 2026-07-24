@@ -29,6 +29,7 @@
   --text3:       #8BA899;
   --radius:      16px;
   --shadow:      0 2px 16px rgba(11,94,69,0.08);
+  --content-max: 430px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body {
@@ -76,6 +77,29 @@ body {
 .today-label { font-size: 10px; color: #8EDFC0; text-transform: uppercase; letter-spacing: 0.8px; }
 .today-amount { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: #fff; line-height: 1.1; }
 .today-count { font-size: 11px; color: #8EDFC0; margin-top: 2px; }
+.layout-toggle-btn {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+  padding: 4px 10px; border-radius: 20px;
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.28);
+  color: #A8EDD3; font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.3px; cursor: pointer; white-space: nowrap;
+}
+.layout-toggle-btn:active { background: rgba(255,255,255,0.28); }
+
+/* ── TABLET MODE ─────────────────────────────────── */
+/* Toggled on <body> by the layout switch — widens the app and gives cards
+   more breathing room / more columns instead of stacking everything narrow. */
+body.tablet-mode { --content-max: 820px; }
+body.tablet-mode .card { padding: 22px; }
+body.tablet-mode .header-title { font-size: 28px; }
+body.tablet-mode .today-amount { font-size: 30px; }
+body.tablet-mode .tab { font-size: 12.5px; padding: 11px 6px; }
+body.tablet-mode .stats-grid,
+body.tablet-mode .rev-stats-grid { grid-template-columns: repeat(4, 1fr); }
+body.tablet-mode .grid2 { gap: 16px; }
+body.tablet-mode .svc-row { padding: 12px 16px; }
+body.tablet-mode .svc-label { font-size: 14px; }
+body.tablet-mode .entry-card { padding: 14px 18px; }
 
 /* ── TABS ────────────────────────────────────────── */
 .tabs { display: flex; gap: 2px; margin-top: 4px; overflow-x: auto; scrollbar-width: none; }
@@ -91,7 +115,7 @@ body {
 .tab.active { background: var(--bg); color: var(--green); }
 
 /* ── BODY ────────────────────────────────────────── */
-.body { padding: 14px 14px 100px; max-width: 430px; margin: 0 auto; }
+.body { padding: 14px 14px 100px; max-width: var(--content-max); margin: 0 auto; }
 .view { display: none; }
 .view.active { display: block; }
 
@@ -381,7 +405,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
 <div id="offlineBanner">⚡ You are offline — entries are saved locally</div>
 
-<div style="max-width:430px;margin:0 auto;">
+<div style="max-width:var(--content-max);margin:0 auto;">
 
   <!-- HEADER -->
   <div class="header">
@@ -395,6 +419,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
         <div class="today-label">Today's Total</div>
         <div class="today-amount" id="todayTotal">VT 0</div>
         <div class="today-count" id="todayCount">0 vehicles</div>
+        <button type="button" class="layout-toggle-btn" id="layoutToggleBtn" onclick="toggleLayoutMode()">🖥️ Tablet View</button>
       </div>
     </div>
     <div class="tabs">
@@ -738,6 +763,8 @@ const HISTORY_ATTENDANCE_KEY  = 'ewenesu_history_attendance';
 const HISTORY_EXPENSES_KEY    = 'ewenesu_history_expenses';
 const HISTORY_RETENTION_DAYS  = 365;
 
+const LAYOUT_MODE_KEY = 'ewenesu_layout_mode'; // 'phone' | 'tablet'
+
 // Default preset prices per service (VT). These are just starting points so
 // the app is usable immediately — edit the numbers below to match your
 // actual price list if they don't line up with what you charge.
@@ -784,6 +811,8 @@ pruneOldHistory();
 commitHistory();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
+applyLayoutMode(localStorage.getItem(LAYOUT_MODE_KEY) || 'phone');
+
 const now = new Date();
 document.getElementById('headerDate').textContent =
   now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
@@ -1047,6 +1076,19 @@ function toLocalDateStr(d) {
   return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
 }
 function todayStr() { return toLocalDateStr(new Date()); }
+
+// ── PHONE / TABLET LAYOUT TOGGLE ──────────────────────────────────────────────
+function applyLayoutMode(mode) {
+  const isTablet = mode === 'tablet';
+  document.body.classList.toggle('tablet-mode', isTablet);
+  const btn = document.getElementById('layoutToggleBtn');
+  if (btn) btn.textContent = isTablet ? '📱 Phone View' : '🖥️ Tablet View';
+}
+function toggleLayoutMode() {
+  const newMode = document.body.classList.contains('tablet-mode') ? 'phone' : 'tablet';
+  localStorage.setItem(LAYOUT_MODE_KEY, newMode);
+  applyLayoutMode(newMode);
+}
 function shortDate(dateStr) { return dateStr.slice(2); } // '2026-07-14' -> '26-07-14'
 function pad2(n) { return String(n).padStart(2, '0'); }
 
