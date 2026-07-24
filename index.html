@@ -260,6 +260,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .alert.error { background: #FDECEC; border: 1px solid #F5AAAA; color: #8B1A1A; }
 .alert.success { background: #E2F5EE; border: 1px solid #5DCAAA; color: #085041; text-align: center; font-weight: 600; }
 .alert.info { background: #E3F2FD; border: 1px solid #90CAF9; color: #0D47A1; text-align: center; }
+.alert.warn { background: #FFF8E1; border: 1.5px solid #FFB300; color: #8B5A00; }
 .hidden { display: none !important; }
 
 /* ── SAVE BUTTON ─────────────────────────────────── */
@@ -279,6 +280,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   display: inline-block; background: #FF6F00; color: #fff;
   border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700;
   margin-left: 6px;
+}
+.yearend-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #FFB300; margin-left: 4px; vertical-align: super;
+  box-shadow: 0 0 0 2px rgba(255,179,0,0.35);
 }
 .file-load-card {
   background: var(--card); border-radius: var(--radius);
@@ -430,6 +436,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <button class="tab" data-tab="sync" onclick="switchView('sync')">
         Reports
         <span class="pending-badge hidden" id="pendingBadge">0</span>
+        <span class="yearend-dot hidden" id="yearEndDot" title="Year-end backup reminder"></span>
       </button>
     </div>
   </div>
@@ -650,6 +657,18 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   <!-- SYNC / MONTHLY REPORT VIEW -->
   <div class="body view" id="viewSync">
 
+    <!-- Year-end backup reminder (shown late December each year) -->
+    <div class="alert warn hidden" id="yearEndBanner" style="margin-bottom:12px;">
+      <div style="font-weight:700;margin-bottom:6px;">📅 Year-end reminder</div>
+      <div style="font-size:13px;line-height:1.4;margin-bottom:10px;">
+        It's nearly December 31 — records older than about a year start dropping off this device once the new year begins. Download a full backup now so nothing from this year is lost.
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn-backup" style="margin-bottom:0;flex:1;" onclick="exportBackup()">💾 Export Full Backup</button>
+        <button type="button" class="attendant-chip" onclick="dismissYearEndReminder()">Dismiss</button>
+      </div>
+    </div>
+
     <!-- Week range indicator -->
     <div class="date-bar" id="weekRangeBar" style="display:none;">
       <span class="date-bar-names" id="weekRangeLabel">Covering —</span>
@@ -738,7 +757,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
       ⬇ Download Monthly Report
     </button>
-    <button class="btn-backup" onclick="exportBackup()">💾 Export Backup (JSON)</button>
+    <button class="btn-backup" onclick="exportBackup()">💾 Export Full Backup (JSON)</button>
     <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
 
   </div>
@@ -764,6 +783,13 @@ const HISTORY_EXPENSES_KEY    = 'ewenesu_history_expenses';
 const HISTORY_RETENTION_DAYS  = 365;
 
 const LAYOUT_MODE_KEY = 'ewenesu_layout_mode'; // 'phone' | 'tablet'
+
+// Year-end backup reminder: fires from Dec 25 through Dec 31 each year,
+// since HISTORY_RETENTION_DAYS pruning happens continuously — this is the
+// last safe window to grab everything before the new year starts aging
+// this year's earliest records out of the ~1 year retention window.
+const YEAR_END_REMINDER_START_MONTH = 11; // December (0-indexed)
+const YEAR_END_REMINDER_START_DAY = 25;
 
 // Default preset prices per service (VT). These are just starting points so
 // the app is usable immediately — edit the numbers below to match your
@@ -812,6 +838,7 @@ commitHistory();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 applyLayoutMode(localStorage.getItem(LAYOUT_MODE_KEY) || 'phone');
+checkYearEndReminder();
 
 const now = new Date();
 document.getElementById('headerDate').textContent =
@@ -1088,6 +1115,25 @@ function toggleLayoutMode() {
   const newMode = document.body.classList.contains('tablet-mode') ? 'phone' : 'tablet';
   localStorage.setItem(LAYOUT_MODE_KEY, newMode);
   applyLayoutMode(newMode);
+}
+
+// ── YEAR-END BACKUP REMINDER ──────────────────────────────────────────────────
+function isYearEndWindow() {
+  const now = new Date();
+  return now.getMonth() === YEAR_END_REMINDER_START_MONTH && now.getDate() >= YEAR_END_REMINDER_START_DAY;
+}
+function checkYearEndReminder() {
+  const banner = document.getElementById('yearEndBanner');
+  const dot = document.getElementById('yearEndDot');
+  if (!banner || !dot) return;
+  const dismissedKey = 'ewenesu_yearend_dismissed_' + new Date().getFullYear();
+  const shouldShow = isYearEndWindow() && !localStorage.getItem(dismissedKey);
+  banner.classList.toggle('hidden', !shouldShow);
+  dot.classList.toggle('hidden', !shouldShow);
+}
+function dismissYearEndReminder() {
+  localStorage.setItem('ewenesu_yearend_dismissed_' + new Date().getFullYear(), '1');
+  checkYearEndReminder();
 }
 function shortDate(dateStr) { return dateStr.slice(2); } // '2026-07-14' -> '26-07-14'
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -1933,6 +1979,7 @@ function switchView(v) {
     renderWeeklyVehicleSummary();
     renderWeekRangeLabel();
     renderRangeStats();
+    checkYearEndReminder();
   }
 }
 
@@ -2061,21 +2108,25 @@ function val(v) {
 }
 
 function exportBackup() {
-  const hasData = entries.length > 0 || Object.keys(attendance).length > 0 || expenses.length > 0;
-  if (!hasData) { alert('No pending data to back up yet.'); return; }
+  const hasData = entries.length > 0 || Object.keys(attendance).length > 0 || expenses.length > 0
+    || historyEntries.length > 0 || Object.keys(historyAttendance).length > 0 || historyExpenses.length > 0;
+  if (!hasData) { alert('No data to back up yet.'); return; }
 
   const backup = {
     exported_at: new Date().toISOString(),
-    entries,
-    attendance,
-    expenses,
+    // This month's not-yet-downloaded working lists:
+    pending: { entries, attendance, expenses },
+    // The full ~1 year retained history — this is what ages out over time,
+    // so it's the part that actually matters for a year-end backup:
+    history: { entries: historyEntries, attendance: historyAttendance, expenses: historyExpenses },
+    revenueLog,
     staff,
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Ewenesu_CarWash_Backup_${todayStr()}.json`;
+  a.download = `Ewenesu_CarWash_FullBackup_${todayStr()}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
