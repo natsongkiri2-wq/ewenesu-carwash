@@ -697,13 +697,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       </div>
     </div>
 
-    <!-- Actions -->
-    <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
-      ⬇ Download Monthly Report
-    </button>
-    <button class="btn-backup" onclick="exportBackup()">💾 Export Backup (JSON)</button>
-    <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
-
     <!-- Expenses summary -->
     <div class="card hidden" id="weeklyExpCard">
       <div class="card-title">Expenses This Month (by Category)</div>
@@ -715,6 +708,13 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title">Vehicle Types This Month</div>
       <div id="weeklyVehicleSummary"></div>
     </div>
+
+    <!-- Actions -->
+    <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
+      ⬇ Download Monthly Report
+    </button>
+    <button class="btn-backup" onclick="exportBackup()">💾 Export Backup (JSON)</button>
+    <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
 
   </div>
 </div>
