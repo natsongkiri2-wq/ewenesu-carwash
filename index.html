@@ -520,7 +520,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title" id="attCardTitle">Attendance & Pay — Today</div>
       <div id="attRows"></div>
       <button type="button" class="attendant-chip add-new" onclick="addAttendant()" style="margin-top:4px;">+ Add Attendant</button>
-      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Enter each person's salary and bonus for the day — since rates differ per person, these are typed in manually and tallied up when you download the monthly report. Use the date range on the Reports tab to check a single week's pay before payout.</div>
+      <div class="alert info" id="bonusInfoBox" style="margin-top:12px;text-align:left;"></div>
+      <button type="button" class="attendant-chip" onclick="applyAutoBonusToAll()" style="margin-top:10px;width:100%;text-align:center;">⚡ Apply Auto Bonus to All Present</button>
+      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Bonus is filled in automatically — VT100 per vehicle washed that day from the 15th vehicle onward, given to every attendant present. Salary is still typed in manually since rates differ per person. Use "Apply Auto Bonus" again later in the day if more vehicles come in after someone was marked present. Use the date range on the Reports tab to check a single week's pay before payout.</div>
       <div id="attAlertBox" class="hidden" style="margin-top:12px;"></div>
       <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAttendance()">Save Attendance</button>
     </div>
@@ -1228,6 +1230,7 @@ function jumpAttToday() {
 }
 
 function renderAttRows() {
+  renderBonusInfoBox();
   const container = document.getElementById('attRows');
   const dayRecord = attendance[selectedAttDate] || {};
 
@@ -1268,13 +1271,56 @@ function renderAttRows() {
 
 function cssId(name) { return name.replace(/[^a-zA-Z0-9]/g, '_'); }
 
+// Bonus rule: VT100 per vehicle, counting only from the 15th vehicle washed
+// that day onward (so 14 vehicles or fewer = no bonus, 15th vehicle = VT100,
+// 20 vehicles = VT600, etc). Applied per attendant, not split between them.
+const BONUS_THRESHOLD_VEHICLES = 14;
+const BONUS_PER_VEHICLE = 100;
+function getVehicleCountForDate(date) {
+  return historyEntries.filter(e => e.date === date).length;
+}
+function computeAutoBonus(date) {
+  const count = getVehicleCountForDate(date);
+  return Math.max(0, count - BONUS_THRESHOLD_VEHICLES) * BONUS_PER_VEHICLE;
+}
+
+function renderBonusInfoBox() {
+  const box = document.getElementById('bonusInfoBox');
+  if (!box) return;
+  const count = getVehicleCountForDate(selectedAttDate);
+  const bonus = computeAutoBonus(selectedAttDate);
+  if (bonus > 0) {
+    box.innerHTML = `🚗 <strong>${count} vehicle${count !== 1 ? 's' : ''}</strong> washed on this date → auto bonus is <strong>VT ${bonus.toLocaleString()}</strong> per attendant (VT100 × ${count - BONUS_THRESHOLD_VEHICLES} vehicles beyond ${BONUS_THRESHOLD_VEHICLES}).`;
+  } else {
+    box.innerHTML = `🚗 <strong>${count} vehicle${count !== 1 ? 's' : ''}</strong> washed on this date — no bonus yet (starts from the 15th vehicle, VT100 each).`;
+  }
+}
+
+function applyAutoBonusToAll() {
+  if (!attendance[selectedAttDate] || Object.keys(attendance[selectedAttDate]).length === 0) {
+    alert('No attendants marked present for this date yet.');
+    return;
+  }
+  const bonus = computeAutoBonus(selectedAttDate);
+  Object.keys(attendance[selectedAttDate]).forEach(name => {
+    attendance[selectedAttDate][name].bonus = bonus;
+  });
+  saveAttendance();
+  mirrorAttendanceDateToHistory(selectedAttDate);
+  commitHistory();
+  renderAttRows();
+  renderAttWeekSummary();
+  renderAttLog();
+  refreshAll();
+}
+
 function toggleAttendance(name) {
   if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
   if (attendance[selectedAttDate][name]) {
     delete attendance[selectedAttDate][name];
     if (Object.keys(attendance[selectedAttDate]).length === 0) delete attendance[selectedAttDate];
   } else {
-    attendance[selectedAttDate][name] = { present: true, salary: 0, bonus: 0 };
+    attendance[selectedAttDate][name] = { present: true, salary: 0, bonus: computeAutoBonus(selectedAttDate) };
   }
   saveAttendance();
   mirrorAttendanceDateToHistory(selectedAttDate);
@@ -1309,7 +1355,7 @@ function addAttendant() {
   }
   if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
   if (!attendance[selectedAttDate][trimmed]) {
-    attendance[selectedAttDate][trimmed] = { present: true, salary: 0, bonus: 0 };
+    attendance[selectedAttDate][trimmed] = { present: true, salary: 0, bonus: computeAutoBonus(selectedAttDate) };
     saveAttendance();
   }
   mirrorAttendanceDateToHistory(selectedAttDate);
