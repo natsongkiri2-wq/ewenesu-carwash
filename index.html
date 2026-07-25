@@ -697,7 +697,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       </div>
       <button type="button" class="attendant-chip" onclick="setRangeThisWeek()" style="margin-bottom:12px;">This Week</button>
       <div class="grid2" style="align-items:end;margin-bottom:8px;">
-        <div style="font-size:11px;color:var(--text3);line-height:1.4;">Tithe is a fixed 10% of gross sales. Commission is editable — applies here and to the monthly totals below.</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.4;">Tithe is a fixed 10% of gross sales. Commission is editable and is calculated on sales after Tithe (before Expenses and Salaries).</div>
         <div class="field" style="margin-bottom:0;">
           <label>Commission Rate (%)</label>
           <input class="input" id="commissionRateInput" type="number" min="0" max="100" step="0.5" onchange="updateCommissionRate(this.value)">
@@ -717,12 +717,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
           <div class="stat-val" id="rangeCommission">VT 0</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Salaries + Bonus</div>
-          <div class="stat-val" id="rangeSalaries">VT 0</div>
-        </div>
-        <div class="stat-box">
           <div class="stat-label">Expenses</div>
           <div class="stat-val" id="rangeExpenses">VT 0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Salaries + Bonus</div>
+          <div class="stat-val" id="rangeSalaries">VT 0</div>
         </div>
         <div class="stat-box">
           <div class="stat-label">Net</div>
@@ -754,12 +754,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
         <div class="stat-val" id="statCommission">VT 0</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Salaries + Bonus</div>
-        <div class="stat-val" id="statSalaries">VT 0</div>
-      </div>
-      <div class="stat-box">
         <div class="stat-label">Expenses</div>
         <div class="stat-val" id="statExpenses">VT 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Salaries + Bonus</div>
+        <div class="stat-val" id="statSalaries">VT 0</div>
       </div>
       <div class="stat-box">
         <div class="stat-label">Net</div>
@@ -1920,15 +1920,17 @@ function computeRangeTotals(from, to) {
     .filter(e => e.date >= from && e.date <= to)
     .reduce((a, e) => a + (Number(e.amount) || 0), 0);
 
-  // Tithe and Commission come off gross sales first, then salaries and
-  // expenses come off what's left.
+  // Order of deductions (confirmed):
+  // 1. Gross Sales − Tithe (10% of gross) = Net Sales After Tithe
+  // 2. Net Sales After Tithe − Commission (rate% of that figure) = Sales After Commission
+  // 3. Sales After Commission − Expenses − Salaries & Bonus = Total Net Sales
   const tithe = Math.round(sales * TITHE_RATE);
-  const commission = Math.round(sales * (commissionRatePercent / 100));
+  const netAfterTithe = sales - tithe;
+  const commission = Math.round(netAfterTithe * (commissionRatePercent / 100));
+  const salesAfterCommission = netAfterTithe - commission;
+  const net = salesAfterCommission - exp - salaries;
 
-  return {
-    sales, tithe, commission, salaries, exp,
-    net: sales - tithe - commission - salaries - exp
-  };
+  return { sales, tithe, commission, exp, salaries, net };
 }
 
 function renderRangeStats() {
@@ -1962,17 +1964,23 @@ function renderWeeklyStats() {
     });
   });
   const expenseTotal = expenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+
+  // Order of deductions (confirmed): Sales − Tithe = Net After Tithe;
+  // Net After Tithe − Commission = Sales After Commission;
+  // Sales After Commission − Expenses − Salaries & Bonus = Total Net Sales.
   const titheTotal = Math.round(salesTotal * TITHE_RATE);
-  const commissionTotal = Math.round(salesTotal * (commissionRatePercent / 100));
-  const net = salesTotal - titheTotal - commissionTotal - salaryTotal - expenseTotal;
+  const netAfterTithe = salesTotal - titheTotal;
+  const commissionTotal = Math.round(netAfterTithe * (commissionRatePercent / 100));
+  const salesAfterCommission = netAfterTithe - commissionTotal;
+  const net = salesAfterCommission - expenseTotal - salaryTotal;
 
   document.getElementById('statSales').textContent    = 'VT ' + salesTotal.toLocaleString();
   document.getElementById('statTithe').textContent    = 'VT ' + titheTotal.toLocaleString();
   document.getElementById('statCommission').textContent = 'VT ' + commissionTotal.toLocaleString();
   const commLabel = document.getElementById('statCommissionLabel');
   if (commLabel) commLabel.textContent = `Commission (${commissionRatePercent}%)`;
-  document.getElementById('statSalaries').textContent = 'VT ' + salaryTotal.toLocaleString();
   document.getElementById('statExpenses').textContent = 'VT ' + expenseTotal.toLocaleString();
+  document.getElementById('statSalaries').textContent = 'VT ' + salaryTotal.toLocaleString();
   const netEl = document.getElementById('statNet');
   netEl.textContent = 'VT ' + net.toLocaleString();
   netEl.classList.toggle('negative', net < 0);
