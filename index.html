@@ -696,10 +696,25 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
         </div>
       </div>
       <button type="button" class="attendant-chip" onclick="setRangeThisWeek()" style="margin-bottom:12px;">This Week</button>
+      <div class="grid2" style="align-items:end;margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--text3);line-height:1.4;">Tithe is a fixed 10% of gross sales. Commission is editable — applies here and to the monthly totals below.</div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Commission Rate (%)</label>
+          <input class="input" id="commissionRateInput" type="number" min="0" max="100" step="0.5" onchange="updateCommissionRate(this.value)">
+        </div>
+      </div>
       <div class="stats-grid" style="margin-bottom:0;">
         <div class="stat-box">
           <div class="stat-label">Sales</div>
           <div class="stat-val" id="rangeSales">VT 0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Tithe (10%)</div>
+          <div class="stat-val" id="rangeTithe">VT 0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label" id="rangeCommissionLabel">Commission (10%)</div>
+          <div class="stat-val" id="rangeCommission">VT 0</div>
         </div>
         <div class="stat-box">
           <div class="stat-label">Salaries + Bonus</div>
@@ -729,6 +744,14 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="stat-box">
         <div class="stat-label">Sales This Month</div>
         <div class="stat-val" id="statSales">VT 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Tithe (10%)</div>
+        <div class="stat-val" id="statTithe">VT 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label" id="statCommissionLabel">Commission (10%)</div>
+        <div class="stat-val" id="statCommission">VT 0</div>
       </div>
       <div class="stat-box">
         <div class="stat-label">Salaries + Bonus</div>
@@ -796,6 +819,12 @@ const HISTORY_RETENTION_DAYS  = 365;
 const BONUS_THRESHOLD_VEHICLES = 14;
 const BONUS_PER_VEHICLE = 100;
 
+// Tithe is fixed at 10% of gross sales. Commission is also 10% by default,
+// but unlike Tithe it's editable — see COMMISSION_RATE_KEY below.
+const TITHE_RATE = 0.10;
+const COMMISSION_RATE_KEY = 'ewenesu_commission_rate_percent'; // stored as a percent number, e.g. 10 = 10%
+const DEFAULT_COMMISSION_PERCENT = 10;
+
 const LAYOUT_MODE_KEY = 'ewenesu_layout_mode'; // 'phone' | 'tablet'
 
 // Year-end backup reminder: fires from Dec 25 through Dec 31 each year,
@@ -838,6 +867,7 @@ let entries = loadEntries();
 let staff = loadStaff();
 let attendantSalaries = loadAttendantSalaries();
 let vehicleProfiles = loadVehicleProfiles();
+let commissionRatePercent = loadCommissionRate();
 let attendance = loadAttendance();
 let expenses = loadExpenses();
 let xlsxData = null;
@@ -865,6 +895,7 @@ document.getElementById('timeInput').value = pad2(now.getHours()) + ':' + pad2(n
 document.getElementById('entryDate').value = todayStr();
 document.getElementById('expDate').value = todayStr();
 document.getElementById('downloadMonth').value = todayStr().slice(0, 7);
+document.getElementById('commissionRateInput').value = commissionRatePercent;
 setRangeThisWeek();
 
 // Default the Revenue tab's date picker to the last 7 days.
@@ -961,6 +992,23 @@ function loadVehicleProfiles() {
 }
 function saveVehicleProfiles() {
   localStorage.setItem(VEHICLE_PROFILE_KEY, JSON.stringify(vehicleProfiles));
+}
+function loadCommissionRate() {
+  const raw = localStorage.getItem(COMMISSION_RATE_KEY);
+  const num = parseFloat(raw);
+  return (raw !== null && !isNaN(num) && num >= 0) ? num : DEFAULT_COMMISSION_PERCENT;
+}
+function saveCommissionRate() {
+  localStorage.setItem(COMMISSION_RATE_KEY, String(commissionRatePercent));
+}
+function updateCommissionRate(value) {
+  const num = parseFloat(value);
+  commissionRatePercent = (isNaN(num) || num < 0) ? 0 : num;
+  saveCommissionRate();
+  const input = document.getElementById('commissionRateInput');
+  if (input) input.value = commissionRatePercent;
+  renderRangeStats();
+  renderWeeklyStats();
 }
 // One-time backfill: seed each plate's default vehicle details from the most
 // recent matching entry already on record, so nothing needs re-entering.
@@ -1872,7 +1920,15 @@ function computeRangeTotals(from, to) {
     .filter(e => e.date >= from && e.date <= to)
     .reduce((a, e) => a + (Number(e.amount) || 0), 0);
 
-  return { sales, salaries, exp, net: sales - salaries - exp };
+  // Tithe and Commission come off gross sales first, then salaries and
+  // expenses come off what's left.
+  const tithe = Math.round(sales * TITHE_RATE);
+  const commission = Math.round(sales * (commissionRatePercent / 100));
+
+  return {
+    sales, tithe, commission, salaries, exp,
+    net: sales - tithe - commission - salaries - exp
+  };
 }
 
 function renderRangeStats() {
@@ -1885,6 +1941,10 @@ function renderRangeStats() {
 
   const r = computeRangeTotals(from, to);
   document.getElementById('rangeSales').textContent = 'VT ' + r.sales.toLocaleString();
+  document.getElementById('rangeTithe').textContent = 'VT ' + r.tithe.toLocaleString();
+  document.getElementById('rangeCommission').textContent = 'VT ' + r.commission.toLocaleString();
+  const rangeCommLabel = document.getElementById('rangeCommissionLabel');
+  if (rangeCommLabel) rangeCommLabel.textContent = `Commission (${commissionRatePercent}%)`;
   document.getElementById('rangeSalaries').textContent = 'VT ' + r.salaries.toLocaleString();
   document.getElementById('rangeExpenses').textContent = 'VT ' + r.exp.toLocaleString();
   const netEl = document.getElementById('rangeNet');
@@ -1902,9 +1962,15 @@ function renderWeeklyStats() {
     });
   });
   const expenseTotal = expenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
-  const net = salesTotal - salaryTotal - expenseTotal;
+  const titheTotal = Math.round(salesTotal * TITHE_RATE);
+  const commissionTotal = Math.round(salesTotal * (commissionRatePercent / 100));
+  const net = salesTotal - titheTotal - commissionTotal - salaryTotal - expenseTotal;
 
   document.getElementById('statSales').textContent    = 'VT ' + salesTotal.toLocaleString();
+  document.getElementById('statTithe').textContent    = 'VT ' + titheTotal.toLocaleString();
+  document.getElementById('statCommission').textContent = 'VT ' + commissionTotal.toLocaleString();
+  const commLabel = document.getElementById('statCommissionLabel');
+  if (commLabel) commLabel.textContent = `Commission (${commissionRatePercent}%)`;
   document.getElementById('statSalaries').textContent = 'VT ' + salaryTotal.toLocaleString();
   document.getElementById('statExpenses').textContent = 'VT ' + expenseTotal.toLocaleString();
   const netEl = document.getElementById('statNet');
