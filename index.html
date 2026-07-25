@@ -754,8 +754,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     </div>
 
     <!-- Actions -->
+    <div class="field">
+      <label>Select Month to Download</label>
+      <input class="input" id="downloadMonth" type="month">
+    </div>
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
-      ⬇ Download Monthly Report
+      ⬇ Download Report
     </button>
     <button class="btn-backup" onclick="exportBackup()">💾 Export Full Backup (JSON)</button>
     <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
@@ -846,6 +850,7 @@ document.getElementById('headerDate').textContent =
 document.getElementById('timeInput').value = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
 document.getElementById('entryDate').value = todayStr();
 document.getElementById('expDate').value = todayStr();
+document.getElementById('downloadMonth').value = todayStr().slice(0, 7);
 setRangeThisWeek();
 
 // Default the Revenue tab's date picker to the last 7 days.
@@ -1567,7 +1572,7 @@ function updateDashboard() {
   document.getElementById('todayTotal').textContent   = 'VT ' + todayTotal.toLocaleString();
   document.getElementById('todayCount').textContent   = today.length + ' vehicle' + (today.length !== 1 ? 's' : '');
   document.getElementById('syncBtn').disabled =
-    entries.length === 0 && Object.keys(attendance).length === 0 && expenses.length === 0;
+    historyEntries.length === 0 && Object.keys(historyAttendance).length === 0 && historyExpenses.length === 0;
 
   const totalPending = entries.length + Object.keys(attendance).length + expenses.length;
   const badge = document.getElementById('pendingBadge');
@@ -2134,8 +2139,19 @@ function exportBackup() {
 }
 
 function buildAndDownload() {
-  const hasData = entries.length > 0 || Object.keys(attendance).length > 0 || expenses.length > 0;
-  if (!hasData) return;
+  const month = document.getElementById('downloadMonth').value; // 'YYYY-MM'
+  if (!month) { alert('Select a month to download first.'); return; }
+
+  // Source from the full retained history (not just pending) so any month
+  // within the ~1 year retention window can be downloaded or re-downloaded,
+  // whether or not it's already been cleared from the working lists.
+  const monthEntries = historyEntries.filter(e => e.date.slice(0, 7) === month);
+  const monthAttDates = Object.keys(historyAttendance).filter(d => d.slice(0, 7) === month).sort();
+  const monthExpenses = historyExpenses.filter(e => e.date.slice(0, 7) === month);
+
+  const hasData = monthEntries.length > 0 || monthAttDates.length > 0 || monthExpenses.length > 0;
+  if (!hasData) { alert(`No data recorded for ${month} yet.`); return; }
+
   const btn = document.getElementById('syncBtn');
   btn.disabled = true;
   btn.textContent = 'Building file...';
@@ -2144,7 +2160,7 @@ function buildAndDownload() {
     let wb = xlsxData ? XLSX.read(xlsxData, { type: 'array', cellDates: true }) : XLSX.utils.book_new();
 
     // ---- SALES SHEET: append to existing "Main Register" or create fresh ----
-    if (entries.length > 0) {
+    if (monthEntries.length > 0) {
       let ws = wb.Sheets['Main Register'];
       if (!ws) {
         ws = {};
@@ -2171,7 +2187,7 @@ function buildAndDownload() {
         if (cell && cell.v) insertRow = r + 1;
       }
 
-      const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+      const sortedEntries = [...monthEntries].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
       sortedEntries.forEach((e, i) => {
         const r = insertRow + i;
         const descStr = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ') || null;
@@ -2201,24 +2217,23 @@ function buildAndDownload() {
         });
       });
 
-      const newEndRow = insertRow + entries.length - 1;
+      const newEndRow = insertRow + monthEntries.length - 1;
       ws['!ref'] = XLSX.utils.encode_range({
         s: { r: 0, c: 0 },
         e: { r: Math.max(range.e.r, newEndRow), c: 13 }
       });
     }
 
-    // ---- ATTENDANCE & SALARIES SHEET: new sheet each week ----
-    const attDates = Object.keys(attendance).sort();
-    if (attDates.length > 0) {
-      const startD = attDates[0], endD = attDates[attDates.length - 1];
+    // ---- ATTENDANCE & SALARIES SHEET: one sheet for the selected month ----
+    if (monthAttDates.length > 0) {
+      const startD = monthAttDates[0], endD = monthAttDates[monthAttDates.length - 1];
       const attWs = {};
       ['Date', 'Attendant', 'Salary (VT)', 'Bonus (VT)', 'Total (VT)'].forEach((h, i) =>
         attWs[XLSX.utils.encode_cell({ r: 0, c: i })] = { v: h, t: 's' }
       );
       let r = 1;
-      attDates.forEach(date => {
-        Object.entries(attendance[date]).forEach(([name, rec]) => {
+      monthAttDates.forEach(date => {
+        Object.entries(historyAttendance[date]).forEach(([name, rec]) => {
           const salary = Number(rec.salary) || 0;
           const bonus = Number(rec.bonus) || 0;
           attWs[XLSX.utils.encode_cell({ r, c: 0 })] = { v: new Date(date + 'T00:00:00'), t: 'd', z: 'yyyy-mm-dd' };
@@ -2234,9 +2249,9 @@ function buildAndDownload() {
       XLSX.utils.book_append_sheet(wb, attWs, attSheetName);
     }
 
-    // ---- EXPENSES SHEET: new sheet each week ----
-    if (expenses.length > 0) {
-      const sortedExp = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
+    // ---- EXPENSES SHEET: one sheet for the selected month ----
+    if (monthExpenses.length > 0) {
+      const sortedExp = [...monthExpenses].sort((a, b) => a.date.localeCompare(b.date));
       const startD = sortedExp[0].date, endD = sortedExp[sortedExp.length - 1].date;
       const expWs = {};
       ['Date', 'Category', 'Amount (VT)', 'Notes'].forEach((h, i) =>
@@ -2254,15 +2269,24 @@ function buildAndDownload() {
       XLSX.utils.book_append_sheet(wb, expWs, expSheetName);
     }
 
-    const dateStr = todayStr();
-    XLSX.writeFile(wb, `Ewenesu_CarWash_MonthlyReport_${dateStr}.xlsx`);
+    XLSX.writeFile(wb, `Ewenesu_CarWash_Report_${month}.xlsx`);
 
-    // After successful download, offer to clear everything for the new month
+    // Only offer to clear PENDING data for the selected month specifically —
+    // other months still sitting in the working lists are left untouched.
+    const pendingMonthHasData =
+      entries.some(e => e.date.slice(0, 7) === month) ||
+      Object.keys(attendance).some(d => d.slice(0, 7) === month) ||
+      expenses.some(e => e.date.slice(0, 7) === month);
+
     setTimeout(() => {
-      if (confirm('Download complete! ✓\n\nClear this month\'s working lists now that they\'ve been saved to the report? (Your history stays on this device for about a year either way.)')) {
-        entries = [];
-        attendance = {};
-        expenses = [];
+      if (!pendingMonthHasData) {
+        alert('Download complete! ✓');
+        return;
+      }
+      if (confirm(`Download complete! ✓\n\nClear ${month}'s working data now that it's been saved to the report? (Your history stays on this device for about a year either way. Other months still pending are left alone.)`)) {
+        entries = entries.filter(e => e.date.slice(0, 7) !== month);
+        Object.keys(attendance).forEach(d => { if (d.slice(0, 7) === month) delete attendance[d]; });
+        expenses = expenses.filter(e => e.date.slice(0, 7) !== month);
         saveEntries();
         saveAttendance();
         saveExpenses();
@@ -2282,7 +2306,7 @@ function buildAndDownload() {
   }
 
   btn.disabled = false;
-  btn.textContent = '⬇ Download Monthly Report';
+  btn.textContent = '⬇ Download Report';
 }
 
 // ── BOOT ───────────────────────────────────────────────────────────────────────
