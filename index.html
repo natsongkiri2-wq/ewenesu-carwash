@@ -522,7 +522,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <button type="button" class="attendant-chip add-new" onclick="addAttendant()" style="margin-top:4px;">+ Add Attendant</button>
       <div class="alert info" id="bonusInfoBox" style="margin-top:12px;text-align:left;"></div>
       <button type="button" class="attendant-chip" onclick="applyAutoBonusToAll()" style="margin-top:10px;width:100%;text-align:center;">⚡ Apply Auto Bonus to All Present</button>
-      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Bonus is filled in automatically — VT100 per vehicle washed that day from the 15th vehicle onward, given to every attendant present. Salary is still typed in manually since rates differ per person. Use "Apply Auto Bonus" again later in the day if more vehicles come in after someone was marked present. Use the date range on the Reports tab to check a single week's pay before payout.</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Salary and bonus both fill in automatically — salary uses each person's most recent rate (edit it any time and that becomes their new default going forward), bonus is VT100 per vehicle washed that day from the 15th vehicle onward. Use "Apply Auto Bonus" again later in the day if more vehicles come in after someone was marked present. Use the date range on the Reports tab to check a single week's pay before payout.</div>
       <div id="attAlertBox" class="hidden" style="margin-top:12px;"></div>
       <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAttendance()">Save Attendance</button>
     </div>
@@ -775,6 +775,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const STORAGE_KEY    = 'ewenesu_entries';
 const STAFF_KEY       = 'ewenesu_staff';
+const STAFF_SALARY_KEY = 'ewenesu_attendant_salaries'; // each person's most-recent salary, reused as the default going forward
 const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
 const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on monthly download
 const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — never cleared
@@ -787,6 +788,11 @@ const HISTORY_ENTRIES_KEY     = 'ewenesu_history_entries';
 const HISTORY_ATTENDANCE_KEY  = 'ewenesu_history_attendance';
 const HISTORY_EXPENSES_KEY    = 'ewenesu_history_expenses';
 const HISTORY_RETENTION_DAYS  = 365;
+
+// Bonus rule: VT100 per vehicle, counting only from the 15th vehicle washed
+// that day onward (14 or fewer = no bonus, 15th vehicle = VT100, etc).
+const BONUS_THRESHOLD_VEHICLES = 14;
+const BONUS_PER_VEHICLE = 100;
 
 const LAYOUT_MODE_KEY = 'ewenesu_layout_mode'; // 'phone' | 'tablet'
 
@@ -828,6 +834,7 @@ const VEHICLE_MODELS = ['Hilux', 'Land Cruiser', 'Prado', 'Corolla', 'Vitz', 'RA
 // ── STATE ────────────────────────────────────────────────────────────────────
 let entries = loadEntries();
 let staff = loadStaff();
+let attendantSalaries = loadAttendantSalaries();
 let attendance = loadAttendance();
 let expenses = loadExpenses();
 let xlsxData = null;
@@ -841,6 +848,7 @@ let historyExpenses   = loadHistoryExpenses();
 ensureHistoryBackfill();
 pruneOldHistory();
 commitHistory();
+ensureAttendantSalaryBackfill();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 applyLayoutMode(localStorage.getItem(LAYOUT_MODE_KEY) || 'phone');
@@ -931,6 +939,30 @@ function loadStaff() {
 }
 function saveStaff() {
   localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
+}
+function loadAttendantSalaries() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STAFF_SALARY_KEY));
+    return (s && typeof s === 'object') ? s : {};
+  } catch { return {}; }
+}
+function saveAttendantSalaries() {
+  localStorage.setItem(STAFF_SALARY_KEY, JSON.stringify(attendantSalaries));
+}
+// One-time backfill: if this device has never used the salary-default
+// feature before, seed each person's default from the most recent salary
+// already on record for them, so nothing needs re-entering.
+function ensureAttendantSalaryBackfill() {
+  if (localStorage.getItem(STAFF_SALARY_KEY) !== null) return;
+  const latestByName = {};
+  Object.keys(historyAttendance).sort().forEach(date => {
+    Object.entries(historyAttendance[date]).forEach(([name, rec]) => {
+      const salary = Number(rec.salary) || 0;
+      if (salary > 0) latestByName[name] = salary; // dates ascending, so last write wins
+    });
+  });
+  attendantSalaries = latestByName;
+  saveAttendantSalaries();
 }
 function loadAttendance() {
   try {
@@ -1271,11 +1303,6 @@ function renderAttRows() {
 
 function cssId(name) { return name.replace(/[^a-zA-Z0-9]/g, '_'); }
 
-// Bonus rule: VT100 per vehicle, counting only from the 15th vehicle washed
-// that day onward (so 14 vehicles or fewer = no bonus, 15th vehicle = VT100,
-// 20 vehicles = VT600, etc). Applied per attendant, not split between them.
-const BONUS_THRESHOLD_VEHICLES = 14;
-const BONUS_PER_VEHICLE = 100;
 function getVehicleCountForDate(date) {
   return historyEntries.filter(e => e.date === date).length;
 }
@@ -1320,7 +1347,11 @@ function toggleAttendance(name) {
     delete attendance[selectedAttDate][name];
     if (Object.keys(attendance[selectedAttDate]).length === 0) delete attendance[selectedAttDate];
   } else {
-    attendance[selectedAttDate][name] = { present: true, salary: 0, bonus: computeAutoBonus(selectedAttDate) };
+    attendance[selectedAttDate][name] = {
+      present: true,
+      salary: attendantSalaries[name] || 0,
+      bonus: computeAutoBonus(selectedAttDate)
+    };
   }
   saveAttendance();
   mirrorAttendanceDateToHistory(selectedAttDate);
@@ -1334,7 +1365,15 @@ function toggleAttendance(name) {
 function updateAttPay(name, field, value) {
   if (!attendance[selectedAttDate] || !attendance[selectedAttDate][name]) return;
   const num = parseFloat(value);
-  attendance[selectedAttDate][name][field] = isNaN(num) ? 0 : num;
+  const clean = isNaN(num) ? 0 : num;
+  attendance[selectedAttDate][name][field] = clean;
+  if (field === 'salary') {
+    // Whatever salary gets entered here becomes this person's standing
+    // default — it'll auto-fill next time they're marked present, on any
+    // date, until it's changed again.
+    attendantSalaries[name] = clean;
+    saveAttendantSalaries();
+  }
   saveAttendance();
   mirrorAttendanceDateToHistory(selectedAttDate);
   commitHistory();
@@ -1355,7 +1394,11 @@ function addAttendant() {
   }
   if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
   if (!attendance[selectedAttDate][trimmed]) {
-    attendance[selectedAttDate][trimmed] = { present: true, salary: 0, bonus: computeAutoBonus(selectedAttDate) };
+    attendance[selectedAttDate][trimmed] = {
+      present: true,
+      salary: attendantSalaries[trimmed] || 0,
+      bonus: computeAutoBonus(selectedAttDate)
+    };
     saveAttendance();
   }
   mirrorAttendanceDateToHistory(selectedAttDate);
@@ -1370,6 +1413,8 @@ function removeAttendant(name) {
   if (!confirm(`Remove ${name} from your team? This deletes them from staff and clears their attendance records for this period.`)) return;
   staff = staff.filter(s => s !== name);
   saveStaff();
+  delete attendantSalaries[name];
+  saveAttendantSalaries();
   const affectedDates = [];
   Object.keys(attendance).forEach(date => {
     if (attendance[date][name]) {
