@@ -456,13 +456,14 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="grid2">
         <div class="field">
           <label>Registration Number</label>
-          <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+          <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" onblur="autofillFromPlate()">
         </div>
         <div class="field">
           <label>Vehicle Type</label>
           <select class="input" id="vehicleType" onchange="toggleOtherField('vehicleType')"></select>
         </div>
       </div>
+      <div style="font-size:11px;color:var(--text3);margin:-4px 0 12px;">Known plates auto-fill type, brand & model from last time — just edit if anything's changed.</div>
       <input class="input hidden" id="vehicleTypeOther" type="text" placeholder="Enter vehicle type" autocomplete="off" style="margin:-4px 0 12px;">
       <div class="grid2">
         <div class="field">
@@ -776,6 +777,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 const STORAGE_KEY    = 'ewenesu_entries';
 const STAFF_KEY       = 'ewenesu_staff';
 const STAFF_SALARY_KEY = 'ewenesu_attendant_salaries'; // each person's most-recent salary, reused as the default going forward
+const VEHICLE_PROFILE_KEY = 'ewenesu_vehicle_profiles'; // per-plate vehicle type/brand/model, reused as the default going forward
 const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
 const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on monthly download
 const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — never cleared
@@ -835,6 +837,7 @@ const VEHICLE_MODELS = ['Hilux', 'Land Cruiser', 'Prado', 'Corolla', 'Vitz', 'RA
 let entries = loadEntries();
 let staff = loadStaff();
 let attendantSalaries = loadAttendantSalaries();
+let vehicleProfiles = loadVehicleProfiles();
 let attendance = loadAttendance();
 let expenses = loadExpenses();
 let xlsxData = null;
@@ -849,6 +852,7 @@ ensureHistoryBackfill();
 pruneOldHistory();
 commitHistory();
 ensureAttendantSalaryBackfill();
+ensureVehicleProfileBackfill();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 applyLayoutMode(localStorage.getItem(LAYOUT_MODE_KEY) || 'phone');
@@ -948,6 +952,28 @@ function loadAttendantSalaries() {
 }
 function saveAttendantSalaries() {
   localStorage.setItem(STAFF_SALARY_KEY, JSON.stringify(attendantSalaries));
+}
+function loadVehicleProfiles() {
+  try {
+    const p = JSON.parse(localStorage.getItem(VEHICLE_PROFILE_KEY));
+    return (p && typeof p === 'object') ? p : {};
+  } catch { return {}; }
+}
+function saveVehicleProfiles() {
+  localStorage.setItem(VEHICLE_PROFILE_KEY, JSON.stringify(vehicleProfiles));
+}
+// One-time backfill: seed each plate's default vehicle details from the most
+// recent matching entry already on record, so nothing needs re-entering.
+function ensureVehicleProfileBackfill() {
+  if (localStorage.getItem(VEHICLE_PROFILE_KEY) !== null) return;
+  const profiles = {};
+  [...historyEntries].sort((a, b) => a.id - b.id).forEach(e => {
+    if (!e.plate) return;
+    if (!e.vehicle_type && !e.brand && !e.model) return;
+    profiles[e.plate] = { vehicle_type: e.vehicle_type || '', brand: e.brand || '', model: e.model || '' };
+  });
+  vehicleProfiles = profiles;
+  saveVehicleProfiles();
 }
 // One-time backfill: if this device has never used the salary-default
 // feature before, seed each person's default from the most recent salary
@@ -1200,6 +1226,33 @@ function resetDropdown(baseId) {
   document.getElementById(baseId).value = '';
   document.getElementById(baseId + 'Other').value = '';
   document.getElementById(baseId + 'Other').classList.add('hidden');
+}
+// Sets a select-or-"Other" field pair from a plain stored value — falls
+// back to the Other text input if the value isn't one of the preset options.
+function setFieldValue(baseId, value) {
+  const select = document.getElementById(baseId);
+  const other = document.getElementById(baseId + 'Other');
+  if (!value) { select.value = ''; other.value = ''; other.classList.add('hidden'); return; }
+  const isPreset = Array.from(select.options).some(o => o.value === value);
+  if (isPreset) {
+    select.value = value;
+    other.value = '';
+    other.classList.add('hidden');
+  } else {
+    select.value = 'Other';
+    other.value = value;
+    other.classList.remove('hidden');
+  }
+}
+// Looks up the plate just entered against past vehicles and fills in
+// Vehicle Type / Brand / Model from whatever was used last time for it.
+function autofillFromPlate() {
+  const plate = document.getElementById('plate').value.trim().toUpperCase();
+  const profile = plate && vehicleProfiles[plate];
+  if (!profile) return;
+  setFieldValue('vehicleType', profile.vehicle_type || '');
+  setFieldValue('brand', profile.brand || '');
+  setFieldValue('model', profile.model || '');
 }
 
 // ── TIME PICKER ───────────────────────────────────────────────────────────────
@@ -2130,6 +2183,10 @@ function handleSave() {
   saveRevenueLog();
   upsertEntryHistory(entry);
   commitHistory();
+  if (plate && (vehicleType || brand || model)) {
+    vehicleProfiles[plate] = { vehicle_type: vehicleType, brand, model };
+    saveVehicleProfiles();
+  }
   refreshAll();
   resetForm();
   showAlert('✓ Entry saved and stored on device!', 'success');
