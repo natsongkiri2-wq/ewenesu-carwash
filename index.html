@@ -101,6 +101,23 @@ body.tablet-mode .svc-row { padding: 12px 16px; }
 body.tablet-mode .svc-label { font-size: 14px; }
 body.tablet-mode .entry-card { padding: 14px 18px; }
 
+/* ── SUN / OUTDOOR MODE ──────────────────────────── */
+/* Toggled on <body> for high-glare daytime use — darkens the app's
+   low-contrast secondary text/borders and bumps up key font sizes so
+   figures stay legible in direct sunlight. */
+body.sun-mode { --text3: #3F5B4C; --border: #A9C2B4; }
+body.sun-mode .card { border-width: 2px; }
+body.sun-mode .card-title,
+body.sun-mode .stat-label,
+body.sun-mode .entry-desc,
+body.sun-mode .tag { font-weight: 700; }
+body.sun-mode .input { font-size: 16px; }
+body.sun-mode .stat-val { font-size: 22px; }
+body.sun-mode .entry-total,
+body.sun-mode .entry-plate { font-size: 17px; }
+body.sun-mode .tag-date,
+body.sun-mode .tag-time { color: var(--text); }
+
 /* ── TABS ────────────────────────────────────────── */
 .tabs { display: flex; gap: 2px; margin-top: 4px; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
@@ -291,6 +308,23 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   background: #1E88E5; margin-left: 4px; vertical-align: super;
   box-shadow: 0 0 0 2px rgba(30,136,229,0.35);
 }
+
+/* ── UNDO TOAST ──────────────────────────────────── */
+.undo-toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(0);
+  z-index: 999; display: flex; align-items: center; gap: 14px;
+  background: #0D2318; color: #fff; border-radius: 12px;
+  padding: 12px 14px 12px 18px; box-shadow: 0 6px 24px rgba(0,0,0,0.28);
+  max-width: calc(var(--content-max) - 32px); width: calc(100% - 32px);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+}
+.undo-toast.show { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(-4px); }
+.undo-toast span { flex: 1; font-size: 13px; font-weight: 600; }
+.undo-toast button {
+  flex-shrink: 0; border: none; background: none; color: var(--green-glow);
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: 0.3px; cursor: pointer; padding: 4px 2px;
+}
 .file-load-card {
   background: var(--card); border-radius: var(--radius);
   border: 2px dashed var(--border); padding: 20px 16px;
@@ -435,6 +469,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
         <div class="today-amount" id="todayTotal">VT 0</div>
         <div class="today-count" id="todayCount">0 vehicles</div>
         <button type="button" class="layout-toggle-btn" id="layoutToggleBtn" onclick="toggleLayoutMode()">🖥️ Tablet View</button>
+        <button type="button" class="layout-toggle-btn" id="sunModeBtn" onclick="toggleSunMode()">☀️ Sun Mode</button>
       </div>
     </div>
     <div class="tabs">
@@ -828,6 +863,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   </div>
 </div>
 
+<!-- Shared "Undo" toast for delete actions -->
+<div class="undo-toast hidden" id="undoToast">
+  <span id="undoToastMsg">Deleted</span>
+  <button type="button" onclick="handleUndoClick()">Undo</button>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 
@@ -861,6 +902,7 @@ const COMMISSION_RATE_KEY = 'ewenesu_commission_rate_percent'; // stored as a pe
 const DEFAULT_COMMISSION_PERCENT = 10;
 
 const LAYOUT_MODE_KEY = 'ewenesu_layout_mode'; // 'phone' | 'tablet'
+const SUN_MODE_KEY = 'ewenesu_sun_mode'; // 'on' | 'off' — high-contrast/larger-text mode for bright daylight
 
 // Year-end backup reminder: fires from Dec 25 through Dec 31 each year,
 // since HISTORY_RETENTION_DAYS pruning happens continuously — this is the
@@ -927,6 +969,7 @@ ensureVehicleProfileBackfill();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 applyLayoutMode(localStorage.getItem(LAYOUT_MODE_KEY) || 'phone');
+applySunMode(localStorage.getItem(SUN_MODE_KEY) === 'on');
 checkYearEndReminder();
 checkBackupReminder();
 
@@ -1270,6 +1313,20 @@ function toggleLayoutMode() {
   const newMode = document.body.classList.contains('tablet-mode') ? 'phone' : 'tablet';
   localStorage.setItem(LAYOUT_MODE_KEY, newMode);
   applyLayoutMode(newMode);
+}
+
+// ── SUN / OUTDOOR MODE ─────────────────────────────────────────────────────────
+// Darkens low-contrast secondary text and borders and bumps up key font sizes,
+// for reading the screen in direct sunlight at the wash bay.
+function applySunMode(on) {
+  document.body.classList.toggle('sun-mode', on);
+  const btn = document.getElementById('sunModeBtn');
+  if (btn) btn.textContent = on ? '☀️ Sun Mode: On' : '☀️ Sun Mode';
+}
+function toggleSunMode() {
+  const on = !document.body.classList.contains('sun-mode');
+  localStorage.setItem(SUN_MODE_KEY, on ? 'on' : 'off');
+  applySunMode(on);
 }
 
 // ── YEAR-END BACKUP REMINDER ──────────────────────────────────────────────────
@@ -1792,8 +1849,11 @@ function cancelEditExpense() {
 }
 
 function deleteExpense(id) {
-  if (!confirm('Delete this expense?')) return;
-  expenses = expenses.filter(e => e.id !== id);
+  const idx = expenses.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  const removed = expenses[idx];
+
+  expenses.splice(idx, 1);
   saveExpenses();
   removeExpenseHistory(id);
   commitHistory();
@@ -1801,6 +1861,17 @@ function deleteExpense(id) {
   renderExpenseList();
   updateExpenseWeekTotal();
   refreshAll();
+
+  showUndoToast('Expense deleted', () => {
+    const insertAt = Math.min(idx, expenses.length);
+    expenses.splice(insertAt, 0, removed);
+    saveExpenses();
+    upsertExpenseHistory(removed);
+    commitHistory();
+    renderExpenseList();
+    updateExpenseWeekTotal();
+    refreshAll();
+  });
 }
 
 function renderExpenseList() {
@@ -1936,16 +2007,31 @@ function clearSalesDateFilter() {
 }
 
 function deleteEntry(id) {
-  if (!confirm('Delete this sales entry?')) return;
-  const removed = entries.find(e => e.id === id);
-  entries = entries.filter(e => e.id !== id);
+  const idx = entries.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  const removed = entries[idx];
+
+  entries.splice(idx, 1);
   saveEntries();
-  if (removed) { removeEntryFromRevenueLog(removed); saveRevenueLog(); }
+  removeEntryFromRevenueLog(removed);
+  saveRevenueLog();
   removeEntryHistory(id);
   commitHistory();
   if (editingEntryId === id) cancelEditEntry();
   refreshAll();
   if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
+
+  showUndoToast('Entry deleted', () => {
+    const insertAt = Math.min(idx, entries.length);
+    entries.splice(insertAt, 0, removed);
+    saveEntries();
+    addEntryToRevenueLog(removed);
+    saveRevenueLog();
+    upsertEntryHistory(removed);
+    commitHistory();
+    refreshAll();
+    if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
+  });
 }
 
 // Records a payment against an entry — works whether the entry is still in
@@ -2441,6 +2527,33 @@ function showAttAlert(msg, type) {
   box.textContent = msg;
   box.classList.remove('hidden');
   if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2800);
+}
+
+// ── UNDO TOAST ─────────────────────────────────────────────────────────────────
+// A brief safety net after Delete actions — the delete happens immediately
+// (no confirm dialog to tap through), but a short window to reverse it stays
+// on screen in case it was tapped by accident.
+let pendingUndoFn = null;
+let undoToastTimeoutId = null;
+
+function showUndoToast(message, undoFn) {
+  const toast = document.getElementById('undoToast');
+  if (undoToastTimeoutId) clearTimeout(undoToastTimeoutId);
+  document.getElementById('undoToastMsg').textContent = message;
+  toast.classList.remove('hidden');
+  void toast.offsetWidth; // force reflow so back-to-back deletes still animate in
+  toast.classList.add('show');
+  pendingUndoFn = undoFn;
+  undoToastTimeoutId = setTimeout(hideUndoToast, 5000);
+}
+function hideUndoToast() {
+  document.getElementById('undoToast').classList.remove('show');
+  pendingUndoFn = null;
+  if (undoToastTimeoutId) { clearTimeout(undoToastTimeoutId); undoToastTimeoutId = null; }
+}
+function handleUndoClick() {
+  if (pendingUndoFn) pendingUndoFn();
+  hideUndoToast();
 }
 
 // ── SAVE ENTRY ─────────────────────────────────────────────────────────────────
