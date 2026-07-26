@@ -404,6 +404,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .entry-plate { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; color: var(--green); letter-spacing: 1px; }
 .entry-desc { font-size: 13px; color: var(--text2); }
 .entry-total { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: var(--green); white-space: nowrap; }
+.entry-note { font-size: 12px; color: var(--text2); font-style: italic; margin-top: 6px; line-height: 1.4; }
 .entry-tags { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
 .tag-time { background: var(--bg); color: var(--text2); }
@@ -529,6 +530,10 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
           <input class="input" id="timeInput" type="time" style="flex:1;">
           <button type="button" class="attendant-chip" onclick="setTimeNow()" style="white-space:nowrap;">Now</button>
         </div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Notes (optional)</label>
+        <input class="input" id="entryNotes" type="text" placeholder="e.g. Wants extra wax next time; scratch on rear door (pre-existing)" autocomplete="off">
       </div>
     </div>
 
@@ -2094,6 +2099,7 @@ function renderEntryCard(e, isPending) {
       ${isPending ? `<button type="button" class="tag-edit" onclick="editEntry(${e.id})">Edit</button>` : ''}
       ${isPending ? `<button type="button" class="tag-delete" onclick="deleteEntry(${e.id})">Delete</button>` : ''}
     </div>
+    ${e.notes ? `<div class="entry-note">📝 ${e.notes}</div>` : ''}
   </div>`;
 }
 
@@ -2557,6 +2563,18 @@ function handleUndoClick() {
 }
 
 // ── SAVE ENTRY ─────────────────────────────────────────────────────────────────
+// Looks for another entry with the same plate on the same date (checked
+// against the full retained history, not just this month's pending list,
+// so it still catches a re-visit even after a monthly clear). Excludes the
+// entry currently being edited, if any.
+function findDuplicatePlateToday(plate, date, excludeId) {
+  if (!plate) return null;
+  const combined = {};
+  historyEntries.forEach(e => combined[e.id] = e);
+  entries.forEach(e => combined[e.id] = e); // pending copies win if they've since diverged
+  return Object.values(combined).find(e => e.id !== excludeId && e.plate === plate && e.date === date) || null;
+}
+
 function handleSave() {
   const plate = document.getElementById('plate').value.trim().toUpperCase();
   const date = document.getElementById('entryDate').value || todayStr();
@@ -2564,11 +2582,22 @@ function handleSave() {
   const brand = fieldValue('brand');
   const model = fieldValue('model');
   const time  = formatTime12(document.getElementById('timeInput').value);
+  const notes = document.getElementById('entryNotes').value.trim();
   const paid  = parseFloat(document.getElementById('paid').value) || 0;
   const total = getTotal();
 
   if (!plate && !brand) { showAlert('Enter at least a plate number or vehicle brand.', 'error'); return; }
   if (total === 0)       { showAlert('Add at least one service with an amount.', 'error'); return; }
+
+  const dup = findDuplicatePlateToday(plate, date, editingEntryId);
+  if (dup) {
+    const when = dup.time ? ` at ${dup.time}` : '';
+    const proceed = confirm(
+      `${plate} already has an entry on ${date}${when} (VT ${Number(dup.total_services || 0).toLocaleString()}).\n\n` +
+      `Save this as another entry for the same vehicle today anyway?`
+    );
+    if (!proceed) return;
+  }
 
   const svcVals = {};
   SERVICES.forEach(s => {
@@ -2583,7 +2612,7 @@ function handleSave() {
       removeEntryFromRevenueLog(oldEntry);
       const updated = {
         ...oldEntry,
-        date, plate, vehicle_type: vehicleType, brand, model, time,
+        date, plate, vehicle_type: vehicleType, brand, model, time, notes,
         ...svcVals,
         total_services: total,
         paid,
@@ -2606,7 +2635,7 @@ function handleSave() {
   }
 
   const entry = {
-    date, plate, vehicle_type: vehicleType, brand, model, time,
+    date, plate, vehicle_type: vehicleType, brand, model, time, notes,
     ...svcVals,
     total_services: total,
     paid,
@@ -2640,6 +2669,7 @@ function editEntry(id) {
   setFieldValue('brand', e.brand || '');
   setFieldValue('model', e.model || '');
   document.getElementById('timeInput').value = parseTime12ToHHMM(e.time);
+  document.getElementById('entryNotes').value = e.notes || '';
   document.getElementById('paid').value = e.paid || '';
 
   SERVICES.forEach(s => {
@@ -2667,6 +2697,7 @@ function cancelEditEntry() {
 function resetForm() {
   document.getElementById('plate').value = '';
   document.getElementById('paid').value = '';
+  document.getElementById('entryNotes').value = '';
   resetDropdown('vehicleType');
   resetDropdown('brand');
   resetDropdown('model');
@@ -2843,14 +2874,14 @@ function buildAndDownload() {
           F:'Full Wash & Interior Clean', G:'Exterior Wash Only',
           H:'Interior Clean Only', I:'Tire Clean Only',
           J:'Vaccume', K:'Interior Polish', L:'Wheel Polish',
-          M:'Total Services', N:'Paid'
+          M:'Total Services', N:'Paid', O:'Notes'
         };
         Object.entries(hdrs).forEach(([col, v]) => ws[`${col}3`] = { v: v, t: 's' });
-        ws['!ref'] = 'A1:N3';
+        ws['!ref'] = 'A1:O3';
         XLSX.utils.book_append_sheet(wb, ws, 'Main Register');
       }
 
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:N3');
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:O3');
       let insertRow = 3;
       for (let r = 2; r <= range.e.r; r++) {
         const cell = ws[XLSX.utils.encode_cell({ r, c: 1 })];
@@ -2877,6 +2908,7 @@ function buildAndDownload() {
           11: val(e.wheel_polish),
           12: e.total_services ? { v: e.total_services, t: 'n' } : null,
           13: e.paid ? { v: e.paid, t: 'n' } : null,
+          14: e.notes ? { v: e.notes, t: 's' } : null,
         };
 
         Object.entries(row).forEach(([cIdx, cell]) => {
@@ -2890,7 +2922,7 @@ function buildAndDownload() {
       const newEndRow = insertRow + monthEntries.length - 1;
       ws['!ref'] = XLSX.utils.encode_range({
         s: { r: 0, c: 0 },
-        e: { r: Math.max(range.e.r, newEndRow), c: 13 }
+        e: { r: Math.max(range.e.r, newEndRow), c: 14 }
       });
     }
 
@@ -2937,6 +2969,52 @@ function buildAndDownload() {
       expWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sortedExp.length, c: 3 } });
       const expSheetName = uniqueSheetName(wb, `Expenses ${shortDate(startD)} to ${shortDate(endD)}`);
       XLSX.utils.book_append_sheet(wb, expWs, expSheetName);
+    }
+
+    // ---- SUMMARY SHEET: the same Sales → Tithe → Commission → Expenses →
+    // Salaries → Net math shown in the app's "Check a Week" card, computed
+    // for this specific month so the numbers travel with the file. ----
+    {
+      const salesTotal = monthEntries.reduce((a, e) => a + (Number(e.total_services) || 0), 0);
+      let salaryTotal = 0;
+      monthAttDates.forEach(date => {
+        Object.values(historyAttendance[date] || {}).forEach(rec => {
+          salaryTotal += (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
+        });
+      });
+      const expenseTotal = monthExpenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+
+      const titheTotal = Math.round(salesTotal * TITHE_RATE);
+      const netAfterTithe = salesTotal - titheTotal;
+      const commissionTotal = Math.round(netAfterTithe * (commissionRatePercent / 100));
+      const salesAfterCommission = netAfterTithe - commissionTotal;
+      const net = salesAfterCommission - expenseTotal - salaryTotal;
+
+      const summaryRows = [
+        [`Month`, month],
+        [`Vehicles Washed`, monthEntries.length],
+        [`Sales`, salesTotal],
+        [`Tithe (${Math.round(TITHE_RATE * 100)}%)`, titheTotal],
+        [`Commission (${commissionRatePercent}%)`, commissionTotal],
+        [`Expenses`, expenseTotal],
+        [`Salaries + Bonus`, salaryTotal],
+        [`Net`, net],
+      ];
+      const sumWs = {};
+      sumWs['A1'] = { v: 'Ewenesu Car Wash — Monthly Summary', t: 's' };
+      // Header row, then one row per figure
+      ['Figure', 'Value'].forEach((h, i) => sumWs[XLSX.utils.encode_cell({ r: 1, c: i })] = { v: h, t: 's' });
+      summaryRows.forEach(([label, value], i) => {
+        const r = i + 2;
+        sumWs[XLSX.utils.encode_cell({ r, c: 0 })] = { v: label, t: 's' };
+        sumWs[XLSX.utils.encode_cell({ r, c: 1 })] = typeof value === 'number'
+          ? { v: value, t: 'n' }
+          : { v: String(value), t: 's' };
+      });
+      sumWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: summaryRows.length + 1, c: 1 } });
+      sumWs['!cols'] = [{ wch: 22 }, { wch: 16 }];
+      const summarySheetName = uniqueSheetName(wb, `Summary ${month}`);
+      XLSX.utils.book_append_sheet(wb, sumWs, summarySheetName);
     }
 
     XLSX.writeFile(wb, `Ewenesu_CarWash_Report_${month}.xlsx`);
