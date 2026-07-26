@@ -884,6 +884,7 @@ const STAFF_SALARY_KEY = 'ewenesu_attendant_salaries'; // each person's most-rec
 const VEHICLE_PROFILE_KEY = 'ewenesu_vehicle_profiles'; // per-plate vehicle type/brand/model, reused as the default going forward
 const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
 const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on monthly download
+const EXPENSE_CATEGORIES_KEY = 'ewenesu_expense_categories'; // persisted quick-fill chips, starts from EXPENSE_PRESETS below
 const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — never cleared
 
 // Full-detail history — mirrors of entries/attendance/expenses that are
@@ -937,8 +938,9 @@ const SERVICES = [
 // names. The list is saved on the device so this only needs doing once.
 const DEFAULT_STAFF = [];
 
-// Quick-fill category chips for the Expenses tab. Tap one to fill the
-// category field — edit this list to match categories you actually use.
+// Quick-fill category chips for the Expenses tab. This is just the starting
+// set — tapping "+ Add" on the Expenses tab lets new categories be added
+// permanently, stored under EXPENSE_CATEGORIES_KEY.
 const EXPENSE_PRESETS = ['Soap & Chemicals', 'Water', 'Fuel', 'Equipment', 'Wages Advance', 'Other'];
 
 // Dropdown options for the New Entry form. Each list ends with "Other",
@@ -952,6 +954,7 @@ const VEHICLE_MODELS = ['Hilux', 'Land Cruiser', 'Prado', 'Corolla', 'Vitz', 'RA
 let entries = loadEntries();
 let editingEntryId = null;
 let staff = loadStaff();
+let expenseCategories = loadExpenseCategories();
 let attendantSalaries = loadAttendantSalaries();
 let vehicleProfiles = loadVehicleProfiles();
 let commissionRatePercent = loadCommissionRate();
@@ -1064,6 +1067,15 @@ function loadStaff() {
 }
 function saveStaff() {
   localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
+}
+function loadExpenseCategories() {
+  try {
+    const c = JSON.parse(localStorage.getItem(EXPENSE_CATEGORIES_KEY));
+    return Array.isArray(c) && c.length ? c : [...EXPENSE_PRESETS];
+  } catch { return [...EXPENSE_PRESETS]; }
+}
+function saveExpenseCategories() {
+  localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(expenseCategories));
 }
 function loadAttendantSalaries() {
   try {
@@ -1769,12 +1781,29 @@ function renderAttLog() {
 // ── EXPENSES TAB ──────────────────────────────────────────────────────────────
 function renderExpensePresets() {
   const row = document.getElementById('expPresetsRow');
-  row.innerHTML = EXPENSE_PRESETS.map(cat =>
+  row.innerHTML = expenseCategories.map(cat =>
     `<button type="button" class="attendant-chip" onclick="fillExpenseCategory('${escapeAttr(cat)}')">${cat}</button>`
-  ).join('');
+  ).join('') + `<button type="button" class="attendant-chip" onclick="addExpenseCategoryPrompt()">+ Add</button>`;
 }
 function fillExpenseCategory(cat) {
   document.getElementById('expCategory').value = cat;
+}
+function addExpenseCategoryPrompt() {
+  const name = prompt('New expense category:');
+  if (!name) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  if (expenseCategories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+    fillExpenseCategory(expenseCategories.find(c => c.toLowerCase() === trimmed.toLowerCase()));
+    return;
+  }
+  // New categories join just before "Other", so "Other" stays the last chip.
+  const otherIdx = expenseCategories.findIndex(c => c.toLowerCase() === 'other');
+  if (otherIdx === -1) expenseCategories.push(trimmed);
+  else expenseCategories.splice(otherIdx, 0, trimmed);
+  saveExpenseCategories();
+  renderExpensePresets();
+  fillExpenseCategory(trimmed);
 }
 
 function showExpAlert(msg, type) {
