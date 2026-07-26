@@ -450,6 +450,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <div class="card">
       <div class="card-title">Vehicle Details</div>
+      <div id="entryEditingBanner" class="alert info hidden">✏️ Editing a sales entry — <button type="button" class="tag-edit" onclick="cancelEditEntry()">Cancel</button></div>
       <div class="field">
         <label>Date</label>
         <div style="display:flex; gap:8px; align-items:center;">
@@ -872,6 +873,7 @@ const VEHICLE_MODELS = ['Hilux', 'Land Cruiser', 'Prado', 'Corolla', 'Vitz', 'RA
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let entries = loadEntries();
+let editingEntryId = null;
 let staff = loadStaff();
 let attendantSalaries = loadAttendantSalaries();
 let vehicleProfiles = loadVehicleProfiles();
@@ -1323,6 +1325,18 @@ function formatTime12(hhmm) {
   let h12 = h % 12;
   if (h12 === 0) h12 = 12;
   return `${h12}:${pad2(m)}${h >= 12 ? 'pm' : 'am'}`;
+}
+// Reverses formatTime12 — turns a stored "4:59pm" string back into "16:59"
+// so the <input type="time"> can be pre-filled when editing an entry.
+function parseTime12ToHHMM(t) {
+  if (!t) return '';
+  const m = t.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
+  if (!m) return '';
+  let h = parseInt(m[1], 10);
+  const ampm = m[3].toLowerCase();
+  if (ampm === 'pm' && h !== 12) h += 12;
+  if (ampm === 'am' && h === 12) h = 0;
+  return pad2(h) + ':' + m[2];
 }
 
 // ── ENTRY DATE ────────────────────────────────────────────────────────────────
@@ -1843,6 +1857,7 @@ function deleteEntry(id) {
   if (removed) { removeEntryFromRevenueLog(removed); saveRevenueLog(); }
   removeEntryHistory(id);
   commitHistory();
+  if (editingEntryId === id) cancelEditEntry();
   refreshAll();
   if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
 }
@@ -1904,6 +1919,7 @@ function renderEntryCard(e, isPending) {
       ${outstanding > 0 ? `<span class="tag tag-outstanding">Owes VT ${outstanding.toLocaleString()}</span>` : ''}
       ${tags}
       ${outstanding > 0 ? `<button type="button" class="tag-payment" onclick="applyPayment(${e.id})">💳 Add Payment</button>` : ''}
+      ${isPending ? `<button type="button" class="tag-edit" onclick="editEntry(${e.id})">Edit</button>` : ''}
       ${isPending ? `<button type="button" class="tag-delete" onclick="deleteEntry(${e.id})">Delete</button>` : ''}
     </div>
   </div>`;
@@ -2297,6 +2313,35 @@ function handleSave() {
     svcVals[s.key] = isNaN(v) ? '' : v;
   });
 
+  if (editingEntryId !== null) {
+    const idx = entries.findIndex(e => e.id === editingEntryId);
+    if (idx !== -1) {
+      const oldEntry = entries[idx];
+      removeEntryFromRevenueLog(oldEntry);
+      const updated = {
+        ...oldEntry,
+        date, plate, vehicle_type: vehicleType, brand, model, time,
+        ...svcVals,
+        total_services: total,
+        paid,
+      };
+      entries[idx] = updated;
+      saveEntries();
+      addEntryToRevenueLog(updated);
+      saveRevenueLog();
+      upsertEntryHistory(updated);
+      commitHistory();
+      if (plate && (vehicleType || brand || model)) {
+        vehicleProfiles[plate] = { vehicle_type: vehicleType, brand, model };
+        saveVehicleProfiles();
+      }
+    }
+    refreshAll();
+    cancelEditEntry();
+    showAlert('✓ Entry updated!', 'success');
+    return;
+  }
+
   const entry = {
     date, plate, vehicle_type: vehicleType, brand, model, time,
     ...svcVals,
@@ -2318,6 +2363,42 @@ function handleSave() {
   refreshAll();
   resetForm();
   showAlert('✓ Entry saved and stored on device!', 'success');
+}
+
+function editEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  editingEntryId = id;
+
+  document.getElementById('entryDate').value = e.date;
+  updateEntryDateTodayBtn();
+  document.getElementById('plate').value = e.plate || '';
+  setFieldValue('vehicleType', e.vehicle_type || '');
+  setFieldValue('brand', e.brand || '');
+  setFieldValue('model', e.model || '');
+  document.getElementById('timeInput').value = parseTime12ToHHMM(e.time);
+  document.getElementById('paid').value = e.paid || '';
+
+  SERVICES.forEach(s => {
+    const v = e[s.key];
+    const input = document.getElementById(`svc_${s.key}`);
+    input.value = (v !== '' && v !== undefined && v !== null) ? v : '';
+    onSvcInput(input, s.key);
+  });
+  updateTotal();
+
+  document.getElementById('entryEditingBanner').classList.remove('hidden');
+  document.getElementById('saveBtn').textContent = 'Update Entry';
+
+  switchView('form');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEditEntry() {
+  editingEntryId = null;
+  document.getElementById('entryEditingBanner').classList.add('hidden');
+  document.getElementById('saveBtn').textContent = 'Save Entry';
+  resetForm();
 }
 
 function resetForm() {
