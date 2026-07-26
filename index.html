@@ -788,6 +788,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       ⬇ Download Report
     </button>
     <button class="btn-backup" onclick="exportBackup()">💾 Export Full Backup (JSON)</button>
+    <button class="btn-backup" onclick="document.getElementById('importBackupInput').click()">📥 Import Data (from another device)</button>
+    <input type="file" id="importBackupInput" accept=".json" class="hidden" onchange="handleImportBackup(event)">
+    <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.4;margin:-8px 0 12px;">Moving to a new phone or tablet? Tap Export here, send that file to the new device (email, USB, cloud drive, etc.), then open the app there and tap Import.</div>
     <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
 
   </div>
@@ -2334,20 +2337,24 @@ function val(v) {
     ? { v: Number(v), t: 'n' } : null;
 }
 
+// Exports EVERYTHING the app stores on this device — sales, attendance,
+// expenses, full history, revenue log, staff, salary defaults, vehicle
+// profiles, commission rate, layout preference, all of it — by dumping
+// every localStorage key this app uses. This is what makes it a genuine
+// "move to a new device" file, not just a partial data backup.
 function exportBackup() {
-  const hasData = entries.length > 0 || Object.keys(attendance).length > 0 || expenses.length > 0
-    || historyEntries.length > 0 || Object.keys(historyAttendance).length > 0 || historyExpenses.length > 0;
-  if (!hasData) { alert('No data to back up yet.'); return; }
+  const dump = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('ewenesu_')) dump[key] = localStorage.getItem(key);
+  }
+  if (Object.keys(dump).length === 0) { alert('No data to back up yet.'); return; }
 
   const backup = {
+    app: 'Ewenesu Car Wash Register',
+    backup_format: 1,
     exported_at: new Date().toISOString(),
-    // This month's not-yet-downloaded working lists:
-    pending: { entries, attendance, expenses },
-    // The full ~1 year retained history — this is what ages out over time,
-    // so it's the part that actually matters for a year-end backup:
-    history: { entries: historyEntries, attendance: historyAttendance, expenses: historyExpenses },
-    revenueLog,
-    staff,
+    data: dump,
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -2358,6 +2365,49 @@ function exportBackup() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Restores a backup produced by exportBackup() above — used to move all
+// data from one phone/tablet to another. Replaces everything currently on
+// this device, so it asks for confirmation first.
+function handleImportBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    let parsed;
+    try { parsed = JSON.parse(ev.target.result); }
+    catch { alert('That file could not be read — make sure you picked the right backup .json file.'); event.target.value = ''; return; }
+
+    const data = parsed && parsed.data;
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      alert("That file doesn't look like an Ewenesu Car Wash backup.");
+      event.target.value = '';
+      return;
+    }
+
+    const when = parsed.exported_at ? new Date(parsed.exported_at).toLocaleString() : 'an unknown time';
+    const ok = confirm(
+      `This backup was exported ${when} and contains ${Object.keys(data).length} data item(s).\n\n` +
+      `Importing will REPLACE all sales, attendance, expenses, history, and settings currently on THIS device with the backup. This cannot be undone.\n\n` +
+      `Continue?`
+    );
+    if (!ok) { event.target.value = ''; return; }
+
+    // Clear this device's existing app data first, then write the backup in.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('ewenesu_')) localStorage.removeItem(key);
+    }
+    Object.entries(data).forEach(([key, value]) => {
+      if (key.startsWith('ewenesu_')) localStorage.setItem(key, value);
+    });
+
+    alert('Import complete! The app will now reload with the transferred data.');
+    location.reload();
+  };
+  reader.onerror = () => { alert('Could not read that file.'); event.target.value = ''; };
+  reader.readAsText(file);
 }
 
 function buildAndDownload() {
