@@ -650,6 +650,10 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <!-- Sales entry list -->
     <div class="section-header">Sales Entries</div>
     <input class="input" id="salesSearch" type="text" placeholder="Search by plate (searches your full year of history)…" autocomplete="off" style="margin-bottom:10px;" oninput="filterSalesEntries(this.value)">
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+      <input class="input" id="salesDateSearch" type="date" style="flex:1;" onchange="filterSalesEntriesByDate(this.value)">
+      <button type="button" class="attendant-chip" id="salesDateClearBtn" onclick="clearSalesDateFilter()" style="white-space:nowrap;display:none;">Clear date</button>
+    </div>
 
     <div id="syncEmpty" class="empty-state">
       <div class="empty-icon">✅</div>
@@ -1843,9 +1847,23 @@ function updateDashboard() {
 }
 
 let salesSearchTerm = '';
+let salesDateFilter = '';
 
 function filterSalesEntries(value) {
   salesSearchTerm = value.trim().toUpperCase();
+  renderEntryList();
+}
+
+function filterSalesEntriesByDate(value) {
+  salesDateFilter = value;
+  document.getElementById('salesDateClearBtn').style.display = value ? 'block' : 'none';
+  renderEntryList();
+}
+
+function clearSalesDateFilter() {
+  salesDateFilter = '';
+  document.getElementById('salesDateSearch').value = '';
+  document.getElementById('salesDateClearBtn').style.display = 'none';
   renderEntryList();
 }
 
@@ -1928,19 +1946,27 @@ function renderEntryCard(e, isPending) {
 function renderEntryList() {
   const list = document.getElementById('entryList');
 
-  // A plate search looks across the full ~1 year of retained history, not
-  // just this month's pending entries — that's the point of keeping it.
-  if (salesSearchTerm) {
+  // A plate search or date pick looks across the full ~1 year of retained
+  // history, not just this month's pending entries — that's the point of
+  // keeping it.
+  if (salesSearchTerm || salesDateFilter) {
     const pendingIds = new Set(entries.map(e => e.id));
-    const matches = historyEntries
-      .filter(e => (e.plate || '').toUpperCase().includes(salesSearchTerm))
-      .sort((a, b) => b.id - a.id);
+    let matches = historyEntries.slice();
+    if (salesSearchTerm) matches = matches.filter(e => (e.plate || '').toUpperCase().includes(salesSearchTerm));
+    if (salesDateFilter) matches = matches.filter(e => e.date === salesDateFilter);
+    matches.sort((a, b) => b.id - a.id);
 
     document.getElementById('syncEmpty').classList.add('hidden');
     document.getElementById('syncEntries').classList.remove('hidden');
 
+    const noMatchMsg = salesSearchTerm && salesDateFilter
+      ? `No entries match "${salesSearchTerm}" on ${salesDateFilter}.`
+      : salesDateFilter
+      ? `No entries found on ${salesDateFilter}.`
+      : `No entries match "${salesSearchTerm}" in the past year.`;
+
     list.innerHTML = matches.length === 0
-      ? `<p style="font-size:13px;color:var(--text3);text-align:center;padding:16px 0;">No entries match "${salesSearchTerm}" in the past year.</p>`
+      ? `<p style="font-size:13px;color:var(--text3);text-align:center;padding:16px 0;">${noMatchMsg}</p>`
       : matches.map(e => renderEntryCard(e, pendingIds.has(e.id))).join('');
     return;
   }
