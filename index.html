@@ -379,6 +379,10 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   font-size: 11px; font-weight: 700; color: var(--green-mid);
   background: none; border: none; cursor: pointer; text-decoration: underline; padding: 2px;
 }
+.tag-edit {
+  font-size: 11px; font-weight: 700; color: var(--green-mid);
+  background: none; border: none; cursor: pointer; text-decoration: underline; padding: 2px;
+}
 
 .empty-state { text-align: center; padding: 50px 20px; color: var(--text2); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
@@ -550,6 +554,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <div class="card">
       <div class="card-title">Add Expense</div>
+      <div id="expEditingBanner" class="alert info hidden">✏️ Editing an expense — <button type="button" class="tag-edit" onclick="cancelEditExpense()">Cancel</button></div>
       <div class="field">
         <label>Date</label>
         <input class="input" id="expDate" type="date">
@@ -568,7 +573,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
         <input class="input" id="expNotes" type="text" placeholder="e.g. 5L Dawn dish soap" autocomplete="off">
       </div>
       <div id="expAlertBox" class="hidden"></div>
-      <button class="btn-save" onclick="handleSaveExpense()">Save Expense</button>
+      <button class="btn-save" id="expSaveBtn" onclick="handleSaveExpense()">Save Expense</button>
     </div>
 
     <div class="total-bar">
@@ -873,6 +878,7 @@ let vehicleProfiles = loadVehicleProfiles();
 let commissionRatePercent = loadCommissionRate();
 let attendance = loadAttendance();
 let expenses = loadExpenses();
+let editingExpenseId = null;
 let xlsxData = null;
 let selectedAttDate = todayStr();
 let revenueLog = loadRevenueLog();
@@ -1640,6 +1646,22 @@ function handleSaveExpense() {
   if (!category) { showExpAlert('Enter a category for this expense.', 'error'); return; }
   if (amount <= 0) { showExpAlert('Enter an amount greater than 0.', 'error'); return; }
 
+  if (editingExpenseId !== null) {
+    const idx = expenses.findIndex(e => e.id === editingExpenseId);
+    if (idx !== -1) {
+      expenses[idx] = { ...expenses[idx], date, category, amount, notes };
+      saveExpenses();
+      upsertExpenseHistory(expenses[idx]);
+      commitHistory();
+    }
+    renderExpenseList();
+    updateExpenseWeekTotal();
+    refreshAll();
+    cancelEditExpense();
+    showExpAlert('✓ Expense updated!', 'success');
+    return;
+  }
+
   const expense = { id: Date.now(), date, category, amount, notes };
   expenses.unshift(expense);
   saveExpenses();
@@ -1656,12 +1678,40 @@ function handleSaveExpense() {
   showExpAlert('✓ Expense saved!', 'success');
 }
 
+function editExpense(id) {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  editingExpenseId = id;
+
+  document.getElementById('expDate').value     = e.date;
+  document.getElementById('expCategory').value = e.category;
+  document.getElementById('expAmount').value   = e.amount;
+  document.getElementById('expNotes').value    = e.notes || '';
+
+  document.getElementById('expEditingBanner').classList.remove('hidden');
+  document.getElementById('expSaveBtn').textContent = 'Update Expense';
+
+  switchView('expenses');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEditExpense() {
+  editingExpenseId = null;
+  document.getElementById('expEditingBanner').classList.add('hidden');
+  document.getElementById('expSaveBtn').textContent = 'Save Expense';
+  document.getElementById('expCategory').value = '';
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expNotes').value = '';
+  document.getElementById('expDate').value = todayStr();
+}
+
 function deleteExpense(id) {
   if (!confirm('Delete this expense?')) return;
   expenses = expenses.filter(e => e.id !== id);
   saveExpenses();
   removeExpenseHistory(id);
   commitHistory();
+  if (editingExpenseId === id) cancelEditExpense();
   renderExpenseList();
   updateExpenseWeekTotal();
   refreshAll();
@@ -1687,6 +1737,7 @@ function renderExpenseList() {
       </div>
       <div class="entry-tags">
         <span class="tag tag-date">${e.date}</span>
+        <button type="button" class="tag-edit" onclick="editExpense(${e.id})">Edit</button>
         <button type="button" class="tag-delete" onclick="deleteExpense(${e.id})">Delete</button>
       </div>
     </div>`).join('');
