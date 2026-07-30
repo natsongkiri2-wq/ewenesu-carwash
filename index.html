@@ -1911,8 +1911,9 @@ function renderExpenseList() {
 }
 
 function getExpenseCategoryTotals() {
+  const month = todayStr().slice(0, 7);
   const totals = {};
-  expenses.forEach(e => {
+  historyExpenses.filter(e => e.date.slice(0, 7) === month).forEach(e => {
     const cat = e.category || 'Other';
     totals[cat] = (totals[cat] || 0) + (Number(e.amount) || 0);
   });
@@ -1920,7 +1921,10 @@ function getExpenseCategoryTotals() {
 }
 
 function updateExpenseWeekTotal() {
-  const total = expenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  const month = todayStr().slice(0, 7);
+  const total = historyExpenses
+    .filter(e => e.date.slice(0, 7) === month)
+    .reduce((a, e) => a + (Number(e.amount) || 0), 0);
   document.getElementById('expWeekTotal').textContent = 'VT ' + total.toLocaleString();
 }
 
@@ -2216,15 +2220,25 @@ function renderRangeStats() {
 }
 
 // ── WEEKLY REPORT STATS ─────────────────────────────────────────────────────────
+// "This Month" here means the current calendar month specifically — sourced
+// from the permanent history records (same as the report downloads use) and
+// filtered by date, rather than summing the whole pending list. That pending
+// list is no longer cleared automatically, so it can span many months; without
+// this filter these cards would drift further from "this month" over time.
 function renderWeeklyStats() {
-  const salesTotal = entries.reduce((a, e) => a + e.total_services, 0);
+  const month = todayStr().slice(0, 7); // 'YYYY-MM'
+  const monthEntries = historyEntries.filter(e => e.date.slice(0, 7) === month);
+  const monthAttDates = Object.keys(historyAttendance).filter(d => d.slice(0, 7) === month);
+
+  const salesTotal = monthEntries.reduce((a, e) => a + (Number(e.total_services) || 0), 0);
   let salaryTotal = 0;
-  Object.values(attendance).forEach(dayObj => {
-    Object.values(dayObj).forEach(rec => {
+  monthAttDates.forEach(date => {
+    Object.values(historyAttendance[date]).forEach(rec => {
       salaryTotal += (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
     });
   });
-  const expenseTotal = expenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  const monthExpenses = historyExpenses.filter(e => e.date.slice(0, 7) === month);
+  const expenseTotal = monthExpenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
 
   // Order of deductions (confirmed): Sales − Tithe = Net After Tithe;
   // Net After Tithe − Commission = Sales After Commission;
@@ -2266,10 +2280,11 @@ function fmtShortDate(dateStr) {
 
 function renderWeekRangeLabel() {
   const bar = document.getElementById('weekRangeBar');
+  const month = todayStr().slice(0, 7);
   const allDates = [
-    ...entries.map(e => e.date),
-    ...Object.keys(attendance),
-    ...expenses.map(e => e.date)
+    ...historyEntries.filter(e => e.date.slice(0, 7) === month).map(e => e.date),
+    ...Object.keys(historyAttendance).filter(d => d.slice(0, 7) === month),
+    ...historyExpenses.filter(e => e.date.slice(0, 7) === month).map(e => e.date)
   ].sort();
   if (allDates.length === 0) { bar.style.display = 'none'; return; }
   bar.style.display = 'flex';
@@ -2279,8 +2294,9 @@ function renderWeekRangeLabel() {
 }
 
 function getVehicleTypeTotals() {
+  const month = todayStr().slice(0, 7);
   const totals = {};
-  entries.forEach(e => {
+  historyEntries.filter(e => e.date.slice(0, 7) === month).forEach(e => {
     const type = e.vehicle_type || 'Not specified';
     if (!totals[type]) totals[type] = { count: 0, total: 0 };
     totals[type].count += 1;
