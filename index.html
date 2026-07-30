@@ -325,17 +325,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800;
   letter-spacing: 0.3px; cursor: pointer; padding: 4px 2px;
 }
-.file-load-card {
-  background: var(--card); border-radius: var(--radius);
-  border: 2px dashed var(--border); padding: 20px 16px;
-  margin-bottom: 12px; text-align: center; cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-}
-.file-load-card.loaded { border-color: var(--green-glow); background: var(--green-pale); border-style: solid; }
-.file-load-card .file-icon { font-size: 32px; margin-bottom: 8px; }
-.file-load-card strong { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--green); }
-.file-load-card p { font-size: 12px; color: var(--text2); margin-top: 5px; line-height: 1.4; }
-
 .btn-sync {
   width: 100%; padding: 15px; border-radius: 13px;
   font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800;
@@ -797,14 +786,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       </div>
     </div>
 
-    <!-- Load file -->
-    <div class="file-load-card" id="fileLoadCard" onclick="document.getElementById('fileInput').click()">
-      <div class="file-icon">📂</div>
-      <strong id="fileLoadLabel">Load Existing Sales Register</strong>
-      <p id="fileLoadSub">Tap to load your Ewenesu_CarWash_Register.xlsx<br>New sales will be appended to it — attendance & expenses get their own sheets each month</p>
-      <input type="file" id="fileInput" accept=".xlsx" class="hidden" onchange="handleFileLoad(event)">
-    </div>
-
     <!-- Stats -->
     <div class="stats-grid">
       <div class="stat-box">
@@ -957,7 +938,6 @@ let commissionRatePercent = loadCommissionRate();
 let attendance = loadAttendance();
 let expenses = loadExpenses();
 let editingExpenseId = null;
-let xlsxData = null;
 let selectedAttDate = todayStr();
 let revenueLog = loadRevenueLog();
 ensureRevenueLog();
@@ -2737,20 +2717,6 @@ function resetForm() {
   updateTotal();
 }
 
-// ── FILE LOAD ──────────────────────────────────────────────────────────────────
-function handleFileLoad(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    xlsxData = ev.target.result;
-    document.getElementById('fileLoadCard').classList.add('loaded');
-    document.getElementById('fileLoadLabel').textContent = '✓ ' + file.name;
-    document.getElementById('fileLoadSub').textContent   = 'Ready — new sales will be appended when you download';
-  };
-  reader.readAsArrayBuffer(file);
-}
-
 // ── BUILD & DOWNLOAD (WEEKLY REPORT) ────────────────────────────────────────────
 function uniqueSheetName(wb, base) {
   let name = base.slice(0, 31);
@@ -2863,7 +2829,7 @@ function buildAndDownload() {
   btn.textContent = 'Building file...';
 
   try {
-    let wb = xlsxData ? XLSX.read(xlsxData, { type: 'array', cellDates: true }) : XLSX.utils.book_new();
+    let wb = XLSX.utils.book_new();
 
     // ---- SALES SHEET: append to existing "Main Register" or create fresh ----
     if (monthEntries.length > 0) {
