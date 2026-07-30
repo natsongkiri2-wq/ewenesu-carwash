@@ -550,7 +550,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <button type="button" class="date-bar-edit" onclick="shiftAttDate(1)">Next ›</button>
     </div>
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
-      <input class="input" id="attDateSearch" type="date" style="flex:1;" onchange="jumpAttToDate(this.value)">
+      <input class="input" id="attDateSearch" type="date" style="flex:1;" oninput="jumpAttToDate(this.value)">
     </div>
     <button type="button" class="attendant-chip" id="attTodayBtn" onclick="jumpAttToday()" style="margin-bottom:12px;display:none;">Jump to Today</button>
 
@@ -616,7 +616,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <div class="section-header">Pending Expenses</div>
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
-      <input class="input" id="expDateSearch" type="date" style="flex:1;" onchange="filterExpensesByDate(this.value)">
+      <input class="input" id="expDateSearch" type="date" style="flex:1;" oninput="filterExpensesByDate(this.value)">
       <button type="button" class="attendant-chip" id="expDateClearBtn" onclick="clearExpenseDateFilter()" style="white-space:nowrap;display:none;">Clear date</button>
     </div>
     <div id="expEmpty" class="empty-state">
@@ -699,7 +699,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="section-header">Sales Entries</div>
     <input class="input" id="salesSearch" type="text" placeholder="Search by plate (searches your full year of history)…" autocomplete="off" style="margin-bottom:10px;" oninput="filterSalesEntries(this.value)">
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
-      <input class="input" id="salesDateSearch" type="date" style="flex:1;" onchange="filterSalesEntriesByDate(this.value)">
+      <input class="input" id="salesDateSearch" type="date" style="flex:1;" oninput="filterSalesEntriesByDate(this.value)">
       <button type="button" class="attendant-chip" id="salesDateClearBtn" onclick="clearSalesDateFilter()" style="white-space:nowrap;display:none;">Clear date</button>
     </div>
 
