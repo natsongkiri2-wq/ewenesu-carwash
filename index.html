@@ -345,12 +345,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   margin-bottom: 14px; transition: opacity 0.15s;
 }
 .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-clear {
-  width: 100%; padding: 12px; border-radius: 12px;
-  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
-  border: 1.5px solid #E57373; cursor: pointer;
-  background: transparent; color: #C62828; margin-bottom: 12px;
-}
 .btn-backup {
   width: 100%; padding: 12px; border-radius: 12px;
   font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
@@ -863,7 +857,6 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <button class="btn-backup" onclick="document.getElementById('importBackupInput').click()">📥 Import Data (from another device)</button>
     <input type="file" id="importBackupInput" accept=".json" class="hidden" onchange="handleImportBackup(event)">
     <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.4;margin:-8px 0 12px;">Moving to a new phone or tablet? Tap Export here, send that file to the new device (email, USB, cloud drive, etc.), then open the app there and tap Import.</div>
-    <button class="btn-clear" onclick="confirmClear()">🗑 Clear This Month's Data</button>
 
   </div>
 </div>
@@ -2741,26 +2734,6 @@ function resetForm() {
   updateTotal();
 }
 
-function confirmClear() {
-  const totalPending = entries.length + Object.keys(attendance).length + expenses.length;
-  if (totalPending === 0) return;
-  if (confirm(`Clear this month's working sales, attendance & pay, and expenses lists? This does NOT delete your history — those records stay searchable on this device for about a year. This only resets the list used to build next month's report.`)) {
-    entries = [];
-    attendance = {};
-    expenses = [];
-    saveEntries();
-    saveAttendance();
-    saveExpenses();
-    refreshAll();
-    renderAttDateLabel();
-    renderAttRows();
-    renderAttWeekSummary();
-    renderAttLog();
-    renderExpenseList();
-    updateExpenseWeekTotal();
-  }
-}
-
 // ── FILE LOAD ──────────────────────────────────────────────────────────────────
 function handleFileLoad(event) {
   const file = event.target.files[0];
@@ -3048,33 +3021,8 @@ function buildAndDownload() {
 
     XLSX.writeFile(wb, `Ewenesu_CarWash_Report_${month}.xlsx`);
 
-    // Only offer to clear PENDING data for the selected month specifically —
-    // other months still sitting in the working lists are left untouched.
-    const pendingMonthHasData =
-      entries.some(e => e.date.slice(0, 7) === month) ||
-      Object.keys(attendance).some(d => d.slice(0, 7) === month) ||
-      expenses.some(e => e.date.slice(0, 7) === month);
-
     setTimeout(() => {
-      if (!pendingMonthHasData) {
-        alert('Download complete! ✓');
-        return;
-      }
-      if (confirm(`Download complete! ✓\n\nClear ${month}'s working data now that it's been saved to the report? (Your history stays on this device for about a year either way. Other months still pending are left alone.)`)) {
-        entries = entries.filter(e => e.date.slice(0, 7) !== month);
-        Object.keys(attendance).forEach(d => { if (d.slice(0, 7) === month) delete attendance[d]; });
-        expenses = expenses.filter(e => e.date.slice(0, 7) !== month);
-        saveEntries();
-        saveAttendance();
-        saveExpenses();
-        refreshAll();
-        renderAttDateLabel();
-        renderAttRows();
-        renderAttWeekSummary();
-        renderAttLog();
-        renderExpenseList();
-        updateExpenseWeekTotal();
-      }
+      alert('Download complete! ✓');
     }, 800);
 
   } catch (err) {
