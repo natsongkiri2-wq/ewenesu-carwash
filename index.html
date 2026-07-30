@@ -663,6 +663,12 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div style="font-size:11px;color:var(--text3);text-align:center;padding-top:4px;line-height:1.4;">Tap a customer to find their unpaid entries below and record a payment.</div>
     </div>
 
+    <div class="card" id="overpaidCard">
+      <div class="card-title">Overpaid Entries</div>
+      <div id="overpaidList"></div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;padding-top:4px;line-height:1.4;">These have "Paid" recorded as more than the service total — usually change given back that wasn't logged, or a total that was reduced after payment. Tap one to find and correct it below.</div>
+    </div>
+
     <div class="card">
       <div class="card-title">Daily Trend</div>
       <div class="rev-trend-wrap" id="revTrendWrap"></div>
@@ -2382,11 +2388,55 @@ function renderRevenueTab() {
   renderRevenueServiceBreakdown(agg);
   renderRevenueVehicleBreakdown(agg);
   renderOutstandingCustomers();
+  renderOverpaidEntries();
 }
 
 // Every customer who currently owes money, aggregated across the full ~1
 // year of retained history (not just the date range picked above) — this
 // always reflects the true, current debt regardless of what's being viewed.
+// Individual entries where "paid" was recorded as more than the service
+// total — checked against the full retained history. Listed per-entry
+// (not aggregated per customer) since each is its own transaction to look
+// at and correct individually.
+function getOverpaidEntries() {
+  return historyEntries
+    .map(e => ({
+      e,
+      overage: (Number(e.paid) || 0) - (Number(e.total_services) || 0),
+    }))
+    .filter(x => x.overage > 0)
+    .sort((a, b) => b.overage - a.overage);
+}
+
+function renderOverpaidEntries() {
+  const box = document.getElementById('overpaidList');
+  if (!box) return;
+  const rows = getOverpaidEntries();
+  if (rows.length === 0) {
+    box.innerHTML = `<p style="font-size:13px;color:var(--text3);text-align:center;padding:10px 0;">No overpaid entries found.</p>`;
+    return;
+  }
+  box.innerHTML = rows.map(({ e, overage }) => {
+    const desc = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ');
+    const plate = e.plate || '(No plate)';
+    return `
+    <div class="entry-card" style="cursor:pointer;" onclick="jumpToPlateSearch('${escapeAttr(e.plate || '')}')">
+      <div class="entry-top">
+        <div class="entry-left">
+          <span class="entry-plate">${plate}</span>
+          ${desc ? `<span class="entry-desc">${desc}</span>` : ''}
+        </div>
+        <span class="entry-total" style="color:#E65100;">+VT ${Math.round(overage).toLocaleString()}</span>
+      </div>
+      <div class="entry-tags">
+        <span class="tag tag-date">${e.date}</span>
+        <span class="tag">Total VT ${Number(e.total_services || 0).toLocaleString()}</span>
+        <span class="tag tag-paid">Paid VT ${Number(e.paid || 0).toLocaleString()}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function getOutstandingByCustomer() {
   const byPlate = {};
   historyEntries.forEach(e => {
