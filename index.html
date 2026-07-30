@@ -2417,12 +2417,10 @@ function renderPaymentDiscrepancies() {
     box.innerHTML = `<p style="font-size:13px;color:var(--text3);text-align:center;padding:10px 0;">No overpaid or unpaid entries found.</p>`;
     return;
   }
-  const pendingIds = new Set(entries.map(e => e.id));
   box.innerHTML = rows.map(({ e, diff }) => {
     const isOver = diff > 0;
     const desc = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ');
     const plate = e.plate || '(No plate)';
-    const isPending = pendingIds.has(e.id);
     return `
     <div class="entry-card">
       <div class="entry-top">
@@ -2436,9 +2434,7 @@ function renderPaymentDiscrepancies() {
         <span class="tag tag-date">${e.date}</span>
         <span class="tag">Total VT ${Number(e.total_services || 0).toLocaleString()}</span>
         <span class="tag ${isOver ? 'tag-paid' : 'tag-outstanding'}">${isOver ? 'Paid' : 'Owes'} VT ${Number(isOver ? (e.paid || 0) : Math.abs(diff)).toLocaleString()}</span>
-        ${isPending
-          ? `<button type="button" class="tag-edit" onclick="editEntry(${e.id})">Edit</button>`
-          : `<button type="button" class="tag-edit" onclick="jumpToPlateSearch('${escapeAttr(e.plate || '')}')">Find</button>`}
+        <button type="button" class="tag-edit" onclick="editEntry(${e.id})">Edit</button>
       </div>
     </div>`;
   }).join('');
@@ -2685,8 +2681,12 @@ function handleSave() {
 
   if (editingEntryId !== null) {
     const idx = entries.findIndex(e => e.id === editingEntryId);
-    if (idx !== -1) {
-      const oldEntry = entries[idx];
+    // Older entries that predate this app's always-keep-pending behavior can
+    // end up history-only (no longer in the working `entries` list). Editing
+    // one of those now brings it back into the working list rather than
+    // silently failing to save.
+    const oldEntry = idx !== -1 ? entries[idx] : historyEntries.find(e => e.id === editingEntryId);
+    if (oldEntry) {
       removeEntryFromRevenueLog(oldEntry);
       const updated = {
         ...oldEntry,
@@ -2695,7 +2695,8 @@ function handleSave() {
         total_services: total,
         paid,
       };
-      entries[idx] = updated;
+      if (idx !== -1) entries[idx] = updated;
+      else entries.unshift(updated);
       saveEntries();
       addEntryToRevenueLog(updated);
       saveRevenueLog();
@@ -2736,7 +2737,7 @@ function handleSave() {
 }
 
 function editEntry(id) {
-  const e = entries.find(x => x.id === id);
+  const e = entries.find(x => x.id === id) || historyEntries.find(x => x.id === id);
   if (!e) return;
   editingEntryId = id;
 
