@@ -549,6 +549,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <span class="date-bar-names" id="attDateLabel">Today</span>
       <button type="button" class="date-bar-edit" onclick="shiftAttDate(1)">Next ›</button>
     </div>
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+      <input class="input" id="attDateSearch" type="date" style="flex:1;" onchange="jumpAttToDate(this.value)">
+    </div>
     <button type="button" class="attendant-chip" id="attTodayBtn" onclick="jumpAttToday()" style="margin-bottom:12px;display:none;">Jump to Today</button>
 
     <div class="card">
@@ -1517,8 +1520,27 @@ function jumpAttToday() {
   renderAttRows();
 }
 
+function jumpAttToDate(value) {
+  if (!value) return;
+  selectedAttDate = value;
+  renderAttDateLabel();
+  renderAttRows();
+}
+
+// A date that predates the always-keep-pending behavior can have its
+// attendance living only in historyAttendance. Bring it into the pending
+// `attendance` object on demand so the existing toggle/edit/save flow just
+// works on it, rather than showing a blank "everyone absent" form.
+function ensureAttDateHydrated(date) {
+  if (!attendance[date] && historyAttendance[date]) {
+    attendance[date] = JSON.parse(JSON.stringify(historyAttendance[date]));
+    saveAttendance();
+  }
+}
+
 function renderAttRows() {
   renderBonusInfoBox();
+  ensureAttDateHydrated(selectedAttDate);
   const container = document.getElementById('attRows');
   const dayRecord = attendance[selectedAttDate] || {};
 
@@ -1740,7 +1762,7 @@ function renderAttWeekSummary() {
 
 function renderAttLog() {
   const el = document.getElementById('attLog');
-  const dates = Object.keys(attendance).sort((a, b) => b.localeCompare(a)).slice(0, 31);
+  const dates = Object.keys(historyAttendance).sort((a, b) => b.localeCompare(a)).slice(0, 31);
   if (dates.length === 0) {
     el.innerHTML = `
       <div class="empty-state">
@@ -1750,14 +1772,15 @@ function renderAttLog() {
     return;
   }
   el.innerHTML = dates.map(date => {
-    const namesStr = Object.entries(attendance[date]).map(([name, rec]) => {
+    const namesStr = Object.entries(historyAttendance[date]).map(([name, rec]) => {
       const total = (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
       return total > 0 ? `${name} (VT ${total.toLocaleString()})` : name;
     }).join(', ');
     return `
-    <div class="entry-card">
+    <div class="entry-card" style="cursor:pointer;" onclick="jumpAttToDate('${date}')">
       <div class="entry-tags" style="margin-bottom:2px;">
         <span class="tag tag-date">${date}</span>
+        <button type="button" class="tag-edit" onclick="event.stopPropagation(); jumpAttToDate('${date}')">Edit</button>
       </div>
       <div style="font-size:13px;color:var(--text);font-weight:600;">${namesStr}</div>
     </div>`;
