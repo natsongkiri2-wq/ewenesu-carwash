@@ -853,6 +853,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
       ⬇ Download Report
     </button>
+    <button class="btn-backup" id="payrollBtn" onclick="buildAndDownloadPayrollReport()">
+      ⬇ Download Attendance, Expenses & Tithe/Commission Report
+    </button>
     <button class="btn-backup" onclick="exportBackup()">💾 Export Full Backup (JSON)</button>
     <button class="btn-backup" onclick="document.getElementById('importBackupInput').click()">📥 Import Data (from another device)</button>
     <input type="file" id="importBackupInput" accept=".json" class="hidden" onchange="handleImportBackup(event)">
@@ -3032,6 +3035,128 @@ function buildAndDownload() {
 
   btn.disabled = false;
   btn.textContent = '⬇ Download Report';
+}
+
+// Standalone report covering just Attendance, Expenses, and the Tithe/
+// Commission/Net summary for one month — no vehicle-by-vehicle sales detail.
+// Always builds a fresh workbook (never appends to a loaded register file),
+// since this is meant as its own, separate hand-off document.
+function buildAndDownloadPayrollReport() {
+  const month = document.getElementById('downloadMonth').value; // 'YYYY-MM'
+  if (!month) { alert('Select a month to download first.'); return; }
+
+  const monthEntries    = historyEntries.filter(e => e.date.slice(0, 7) === month);
+  const monthAttDates   = Object.keys(historyAttendance).filter(d => d.slice(0, 7) === month).sort();
+  const monthExpenses   = historyExpenses.filter(e => e.date.slice(0, 7) === month);
+
+  const hasData = monthAttDates.length > 0 || monthExpenses.length > 0 || monthEntries.length > 0;
+  if (!hasData) { alert(`No data recorded for ${month} yet.`); return; }
+
+  const btn = document.getElementById('payrollBtn');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Building file...';
+
+  try {
+    const wb = XLSX.utils.book_new();
+
+    // ---- ATTENDANCE & SALARIES SHEET ----
+    if (monthAttDates.length > 0) {
+      const startD = monthAttDates[0], endD = monthAttDates[monthAttDates.length - 1];
+      const attWs = {};
+      ['Date', 'Attendant', 'Salary (VT)', 'Bonus (VT)', 'Total (VT)'].forEach((h, i) =>
+        attWs[XLSX.utils.encode_cell({ r: 0, c: i })] = { v: h, t: 's' }
+      );
+      let r = 1;
+      monthAttDates.forEach(date => {
+        Object.entries(historyAttendance[date]).forEach(([name, rec]) => {
+          const salary = Number(rec.salary) || 0;
+          const bonus = Number(rec.bonus) || 0;
+          attWs[XLSX.utils.encode_cell({ r, c: 0 })] = { v: new Date(date + 'T00:00:00'), t: 'd', z: 'yyyy-mm-dd' };
+          attWs[XLSX.utils.encode_cell({ r, c: 1 })] = { v: name, t: 's' };
+          attWs[XLSX.utils.encode_cell({ r, c: 2 })] = { v: salary, t: 'n' };
+          attWs[XLSX.utils.encode_cell({ r, c: 3 })] = { v: bonus, t: 'n' };
+          attWs[XLSX.utils.encode_cell({ r, c: 4 })] = { v: salary + bonus, t: 'n' };
+          r++;
+        });
+      });
+      attWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(r - 1, 0), c: 4 } });
+      XLSX.utils.book_append_sheet(wb, attWs, uniqueSheetName(wb, `Attendance ${shortDate(startD)} to ${shortDate(endD)}`));
+    }
+
+    // ---- EXPENSES SHEET ----
+    if (monthExpenses.length > 0) {
+      const sortedExp = [...monthExpenses].sort((a, b) => a.date.localeCompare(b.date));
+      const startD = sortedExp[0].date, endD = sortedExp[sortedExp.length - 1].date;
+      const expWs = {};
+      ['Date', 'Category', 'Amount (VT)', 'Notes'].forEach((h, i) =>
+        expWs[XLSX.utils.encode_cell({ r: 0, c: i })] = { v: h, t: 's' }
+      );
+      sortedExp.forEach((e, i) => {
+        const r = i + 1;
+        expWs[XLSX.utils.encode_cell({ r, c: 0 })] = { v: new Date(e.date + 'T00:00:00'), t: 'd', z: 'yyyy-mm-dd' };
+        expWs[XLSX.utils.encode_cell({ r, c: 1 })] = { v: e.category || '', t: 's' };
+        expWs[XLSX.utils.encode_cell({ r, c: 2 })] = { v: Number(e.amount) || 0, t: 'n' };
+        if (e.notes) expWs[XLSX.utils.encode_cell({ r, c: 3 })] = { v: e.notes, t: 's' };
+      });
+      expWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sortedExp.length, c: 3 } });
+      XLSX.utils.book_append_sheet(wb, expWs, uniqueSheetName(wb, `Expenses ${shortDate(startD)} to ${shortDate(endD)}`));
+    }
+
+    // ---- TITHE / COMMISSION / NET SUMMARY SHEET ----
+    {
+      const salesTotal = monthEntries.reduce((a, e) => a + (Number(e.total_services) || 0), 0);
+      let salaryTotal = 0;
+      monthAttDates.forEach(date => {
+        Object.values(historyAttendance[date] || {}).forEach(rec => {
+          salaryTotal += (Number(rec.salary) || 0) + (Number(rec.bonus) || 0);
+        });
+      });
+      const expenseTotal = monthExpenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+
+      const titheTotal = Math.round(salesTotal * TITHE_RATE);
+      const netAfterTithe = salesTotal - titheTotal;
+      const commissionTotal = Math.round(netAfterTithe * (commissionRatePercent / 100));
+      const salesAfterCommission = netAfterTithe - commissionTotal;
+      const net = salesAfterCommission - expenseTotal - salaryTotal;
+
+      const summaryRows = [
+        [`Month`, month],
+        [`Sales`, salesTotal],
+        [`Tithe (${Math.round(TITHE_RATE * 100)}%)`, titheTotal],
+        [`Commission (${commissionRatePercent}%)`, commissionTotal],
+        [`Expenses`, expenseTotal],
+        [`Salaries + Bonus`, salaryTotal],
+        [`Net`, net],
+      ];
+      const sumWs = {};
+      sumWs['A1'] = { v: 'Ewenesu Car Wash — Tithe, Commission & Expenses Summary', t: 's' };
+      ['Figure', 'Value'].forEach((h, i) => sumWs[XLSX.utils.encode_cell({ r: 1, c: i })] = { v: h, t: 's' });
+      summaryRows.forEach(([label, value], i) => {
+        const r = i + 2;
+        sumWs[XLSX.utils.encode_cell({ r, c: 0 })] = { v: label, t: 's' };
+        sumWs[XLSX.utils.encode_cell({ r, c: 1 })] = typeof value === 'number'
+          ? { v: value, t: 'n' }
+          : { v: String(value), t: 's' };
+      });
+      sumWs['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: summaryRows.length + 1, c: 1 } });
+      sumWs['!cols'] = [{ wch: 26 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, sumWs, uniqueSheetName(wb, `Tithe & Commission ${month}`));
+    }
+
+    XLSX.writeFile(wb, `Ewenesu_CarWash_PayrollReport_${month}.xlsx`);
+
+    setTimeout(() => {
+      alert('Download complete! ✓');
+    }, 800);
+
+  } catch (err) {
+    alert('Error building file: ' + err.message);
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = originalLabel;
 }
 
 // ── BOOT ───────────────────────────────────────────────────────────────────────
