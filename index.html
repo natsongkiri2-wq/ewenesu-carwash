@@ -612,6 +612,10 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     </div>
 
     <div class="section-header">Pending Expenses</div>
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+      <input class="input" id="expDateSearch" type="date" style="flex:1;" onchange="filterExpensesByDate(this.value)">
+      <button type="button" class="attendant-chip" id="expDateClearBtn" onclick="clearExpenseDateFilter()" style="white-space:nowrap;display:none;">Clear date</button>
+    </div>
     <div id="expEmpty" class="empty-state">
       <div class="empty-icon">🧾</div>
       <strong>No expenses recorded yet</strong>
@@ -1807,10 +1811,23 @@ function handleSaveExpense() {
 
   if (editingExpenseId !== null) {
     const idx = expenses.findIndex(e => e.id === editingExpenseId);
+    // Same reasoning as sales entries: an expense that predates the
+    // always-keep-pending behavior can be history-only. Editing it brings
+    // it back into the pending list instead of silently failing to save.
+    let updated = null;
     if (idx !== -1) {
-      expenses[idx] = { ...expenses[idx], date, category, amount, notes };
+      updated = { ...expenses[idx], date, category, amount, notes };
+      expenses[idx] = updated;
+    } else {
+      const old = historyExpenses.find(e => e.id === editingExpenseId);
+      if (old) {
+        updated = { ...old, date, category, amount, notes };
+        expenses.unshift(updated);
+      }
+    }
+    if (updated) {
       saveExpenses();
-      upsertExpenseHistory(expenses[idx]);
+      upsertExpenseHistory(updated);
       commitHistory();
     }
     renderExpenseList();
@@ -1838,7 +1855,7 @@ function handleSaveExpense() {
 }
 
 function editExpense(id) {
-  const e = expenses.find(x => x.id === id);
+  const e = expenses.find(x => x.id === id) || historyExpenses.find(x => x.id === id);
   if (!e) return;
   editingExpenseId = id;
 
@@ -1866,10 +1883,10 @@ function cancelEditExpense() {
 
 function deleteExpense(id) {
   const idx = expenses.findIndex(e => e.id === id);
-  if (idx === -1) return;
-  const removed = expenses[idx];
+  const removed = idx !== -1 ? expenses[idx] : historyExpenses.find(e => e.id === id);
+  if (!removed) return;
 
-  expenses.splice(idx, 1);
+  if (idx !== -1) expenses.splice(idx, 1);
   saveExpenses();
   removeExpenseHistory(id);
   commitHistory();
@@ -1879,7 +1896,7 @@ function deleteExpense(id) {
   refreshAll();
 
   showUndoToast('Expense deleted', () => {
-    const insertAt = Math.min(idx, expenses.length);
+    const insertAt = idx !== -1 ? Math.min(idx, expenses.length) : 0;
     expenses.splice(insertAt, 0, removed);
     saveExpenses();
     upsertExpenseHistory(removed);
@@ -1892,6 +1909,21 @@ function deleteExpense(id) {
 
 function renderExpenseList() {
   const list = document.getElementById('expList');
+
+  // A date pick looks across full retained expense history, not just the
+  // pending list — same reasoning as the Sales Entries date search.
+  if (expDateFilter) {
+    const matches = historyExpenses.filter(e => e.date === expDateFilter).sort((a, b) => b.id - a.id);
+
+    document.getElementById('expEmpty').classList.add('hidden');
+    list.classList.remove('hidden');
+
+    list.innerHTML = matches.length === 0
+      ? `<p style="font-size:13px;color:var(--text3);text-align:center;padding:16px 0;">No expenses found on ${expDateFilter}.</p>`
+      : matches.map(e => renderExpenseCard(e)).join('');
+    return;
+  }
+
   if (expenses.length === 0) {
     document.getElementById('expEmpty').classList.remove('hidden');
     list.classList.add('hidden');
@@ -1899,7 +1931,11 @@ function renderExpenseList() {
   }
   document.getElementById('expEmpty').classList.add('hidden');
   list.classList.remove('hidden');
-  list.innerHTML = expenses.map(e => `
+  list.innerHTML = expenses.map(e => renderExpenseCard(e)).join('');
+}
+
+function renderExpenseCard(e) {
+  return `
     <div class="entry-card">
       <div class="entry-top">
         <div class="entry-left">
@@ -1913,7 +1949,7 @@ function renderExpenseList() {
         <button type="button" class="tag-edit" onclick="editExpense(${e.id})">Edit</button>
         <button type="button" class="tag-delete" onclick="deleteExpense(${e.id})">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
 }
 
 function getExpenseCategoryTotals() {
@@ -2024,6 +2060,19 @@ function clearSalesDateFilter() {
   document.getElementById('salesDateSearch').value = '';
   document.getElementById('salesDateClearBtn').style.display = 'none';
   renderEntryList();
+}
+
+let expDateFilter = '';
+function filterExpensesByDate(value) {
+  expDateFilter = value;
+  document.getElementById('expDateClearBtn').style.display = value ? 'block' : 'none';
+  renderExpenseList();
+}
+function clearExpenseDateFilter() {
+  expDateFilter = '';
+  document.getElementById('expDateSearch').value = '';
+  document.getElementById('expDateClearBtn').style.display = 'none';
+  renderExpenseList();
 }
 
 function deleteEntry(id) {
