@@ -664,9 +664,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     </div>
 
     <div class="card" id="overpaidCard">
-      <div class="card-title">Overpaid Entries</div>
+      <div class="card-title">Overpaid &amp; Unpaid Entries</div>
       <div id="overpaidList"></div>
-      <div style="font-size:11px;color:var(--text3);text-align:center;padding-top:4px;line-height:1.4;">These have "Paid" recorded as more than the service total — usually change given back that wasn't logged, or a total that was reduced after payment. Tap one to find and correct it below.</div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;padding-top:4px;line-height:1.4;">Any entry where Paid doesn't match the total — orange is overpaid (usually unlogged change, or a total reduced after payment), red is still owing. Tap Edit to fix it directly.</div>
     </div>
 
     <div class="card">
@@ -2388,50 +2388,57 @@ function renderRevenueTab() {
   renderRevenueServiceBreakdown(agg);
   renderRevenueVehicleBreakdown(agg);
   renderOutstandingCustomers();
-  renderOverpaidEntries();
+  renderPaymentDiscrepancies();
 }
 
 // Every customer who currently owes money, aggregated across the full ~1
 // year of retained history (not just the date range picked above) — this
 // always reflects the true, current debt regardless of what's being viewed.
-// Individual entries where "paid" was recorded as more than the service
-// total — checked against the full retained history. Listed per-entry
-// (not aggregated per customer) since each is its own transaction to look
-// at and correct individually.
-function getOverpaidEntries() {
+// Individual entries where "paid" doesn't match the service total — either
+// overpaid (paid > total) or still owing (paid < total) — checked against
+// the full retained history. Listed per-entry (not aggregated per customer,
+// unlike the "Money Owed" card above) so each mismatched transaction can be
+// found and corrected on its own.
+function getPaymentDiscrepancies() {
   return historyEntries
     .map(e => ({
       e,
-      overage: (Number(e.paid) || 0) - (Number(e.total_services) || 0),
+      diff: (Number(e.paid) || 0) - (Number(e.total_services) || 0),
     }))
-    .filter(x => x.overage > 0)
-    .sort((a, b) => b.overage - a.overage);
+    .filter(x => x.diff !== 0)
+    .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 }
 
-function renderOverpaidEntries() {
+function renderPaymentDiscrepancies() {
   const box = document.getElementById('overpaidList');
   if (!box) return;
-  const rows = getOverpaidEntries();
+  const rows = getPaymentDiscrepancies();
   if (rows.length === 0) {
-    box.innerHTML = `<p style="font-size:13px;color:var(--text3);text-align:center;padding:10px 0;">No overpaid entries found.</p>`;
+    box.innerHTML = `<p style="font-size:13px;color:var(--text3);text-align:center;padding:10px 0;">No overpaid or unpaid entries found.</p>`;
     return;
   }
-  box.innerHTML = rows.map(({ e, overage }) => {
+  const pendingIds = new Set(entries.map(e => e.id));
+  box.innerHTML = rows.map(({ e, diff }) => {
+    const isOver = diff > 0;
     const desc = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ');
     const plate = e.plate || '(No plate)';
+    const isPending = pendingIds.has(e.id);
     return `
-    <div class="entry-card" style="cursor:pointer;" onclick="jumpToPlateSearch('${escapeAttr(e.plate || '')}')">
+    <div class="entry-card">
       <div class="entry-top">
         <div class="entry-left">
           <span class="entry-plate">${plate}</span>
           ${desc ? `<span class="entry-desc">${desc}</span>` : ''}
         </div>
-        <span class="entry-total" style="color:#E65100;">+VT ${Math.round(overage).toLocaleString()}</span>
+        <span class="entry-total" style="color:${isOver ? '#E65100' : '#8B1A1A'};">${isOver ? '+' : '-'}VT ${Math.round(Math.abs(diff)).toLocaleString()}</span>
       </div>
       <div class="entry-tags">
         <span class="tag tag-date">${e.date}</span>
         <span class="tag">Total VT ${Number(e.total_services || 0).toLocaleString()}</span>
-        <span class="tag tag-paid">Paid VT ${Number(e.paid || 0).toLocaleString()}</span>
+        <span class="tag ${isOver ? 'tag-paid' : 'tag-outstanding'}">${isOver ? 'Paid' : 'Owes'} VT ${Number(isOver ? (e.paid || 0) : Math.abs(diff)).toLocaleString()}</span>
+        ${isPending
+          ? `<button type="button" class="tag-edit" onclick="editEntry(${e.id})">Edit</button>`
+          : `<button type="button" class="tag-edit" onclick="jumpToPlateSearch('${escapeAttr(e.plate || '')}')">Find</button>`}
       </div>
     </div>`;
   }).join('');
