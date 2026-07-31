@@ -560,7 +560,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <button type="button" class="attendant-chip add-new" onclick="addAttendant()" style="margin-top:4px;">+ Add Attendant</button>
       <div class="alert info" id="bonusInfoBox" style="margin-top:12px;text-align:left;"></div>
       <button type="button" class="attendant-chip" onclick="applyAutoBonusToAll()" style="margin-top:10px;width:100%;text-align:center;">⚡ Apply Auto Bonus to All Present</button>
-      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Salary and bonus both fill in automatically — salary uses each person's most recent rate (edit it any time and that becomes their new default going forward), bonus is VT100 per vehicle washed that day from the 15th vehicle onward. Use "Apply Auto Bonus" again later in the day if more vehicles come in after someone was marked present. Use the date range on the Reports tab to check a single week's pay before payout.</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Salary and bonus both fill in automatically — salary uses each person's most recent rate (edit it any time and that becomes their new default going forward), bonus is VT100 per vehicle washed that day from the 15th vehicle onward. Use "Apply Auto Bonus" again later in the day if more vehicles come in after someone was marked present. Use the From/To range below to check a specific pay week's totals before payout.</div>
       <div id="attAlertBox" class="hidden" style="margin-top:12px;"></div>
       <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAttendance()">Save Attendance</button>
     </div>
@@ -575,6 +575,24 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <div class="card">
       <div class="card-title">This Period — Presence & Pay</div>
+      <div class="grid2">
+        <div class="field">
+          <label>From</label>
+          <input class="input" id="attRangeFrom" type="date" onchange="renderAttWeekSummary()">
+        </div>
+        <div class="field">
+          <label>To</label>
+          <input class="input" id="attRangeTo" type="date" onchange="renderAttWeekSummary()">
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button type="button" class="attendant-chip" onclick="setAttRangeThisWeek()">This Week</button>
+        <button type="button" class="attendant-chip" onclick="setAttRangeAllTime()">All Time</button>
+      </div>
+      <div class="total-bar" style="margin-bottom:12px;">
+        <span class="total-label">Total Pay For This Range</span>
+        <span class="total-value" id="attRangeTotal">VT 0</span>
+      </div>
       <div id="attWeekSummary">
         <p style="font-size:13px;color:var(--text3);">No attendance recorded yet this period.</p>
       </div>
@@ -1042,7 +1060,7 @@ renderExpensePresets();
 // Build attendance tab
 renderAttDateLabel();
 renderAttRows();
-renderAttWeekSummary();
+setAttRangeThisWeek();
 renderAttLog();
 
 // Build expenses tab
@@ -1727,9 +1745,11 @@ function handleSaveAttendance() {
   showAttAlert('✓ Attendance saved for ' + fmtAttDate(selectedAttDate) + '!', 'success');
 }
 
-function getAttendanceSummary() {
+function getAttendanceSummary(from, to) {
   const byStaff = {};
-  Object.entries(attendance).forEach(([date, dayObj]) => {
+  Object.entries(historyAttendance).forEach(([date, dayObj]) => {
+    if (from && date < from) return;
+    if (to && date > to) return;
     Object.entries(dayObj).forEach(([name, rec]) => {
       if (!byStaff[name]) byStaff[name] = { days: 0, pay: 0, breakdown: [] };
       const salary = Number(rec.salary) || 0;
@@ -1763,10 +1783,31 @@ function renderAttendanceSummaryHTML(rows) {
 }
 
 function renderAttWeekSummary() {
-  const rows = getAttendanceSummary();
+  const from = document.getElementById('attRangeFrom').value;
+  const to = document.getElementById('attRangeTo').value;
+  const rows = getAttendanceSummary(from, to);
   const el = document.getElementById('attWeekSummary');
   el.innerHTML = renderAttendanceSummaryHTML(rows) ||
-    `<p style="font-size:13px;color:var(--text3);">No attendance recorded yet this week.</p>`;
+    `<p style="font-size:13px;color:var(--text3);">No attendance recorded for this range.</p>`;
+
+  const grandTotal = rows.reduce((a, [, d]) => a + d.pay, 0);
+  document.getElementById('attRangeTotal').textContent = 'VT ' + Math.round(grandTotal).toLocaleString();
+}
+
+// Monday through today — the usual pay-week window to review before payout.
+function setAttRangeThisWeek() {
+  const today = new Date(todayStr() + 'T00:00:00');
+  const monday = mondayOf(today);
+  document.getElementById('attRangeFrom').value = toLocalDateStr(monday);
+  document.getElementById('attRangeTo').value = todayStr();
+  renderAttWeekSummary();
+}
+function setAttRangeAllTime() {
+  const dates = Object.keys(historyAttendance).sort();
+  const from = dates.length ? dates[0] : todayStr();
+  document.getElementById('attRangeFrom').value = from;
+  document.getElementById('attRangeTo').value = todayStr();
+  renderAttWeekSummary();
 }
 
 function renderAttLog() {
