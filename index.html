@@ -958,6 +958,15 @@ ensureRevenueLog();
 let historyEntries    = loadHistoryEntries();
 let historyAttendance = loadHistoryAttendance();
 let historyExpenses   = loadHistoryExpenses();
+
+// Declared up here (not just before their own filter functions) because
+// renderExpenseList() and friends run during initial boot, before the script
+// reaches later lines — a `let` referenced before its own declaration line
+// throws, which silently kills all remaining boot code in the script. This
+// exact class of bug has bitten this app before.
+let salesSearchTerm = '';
+let salesDateFilter = '';
+let expDateFilter = '';
 ensureHistoryBackfill();
 pruneOldHistory();
 commitHistory();
@@ -2064,9 +2073,6 @@ function updateDashboard() {
   renderEntryList();
 }
 
-let salesSearchTerm = '';
-let salesDateFilter = '';
-
 function filterSalesEntries(value) {
   salesSearchTerm = value.trim().toUpperCase();
   renderEntryList();
@@ -2085,7 +2091,6 @@ function clearSalesDateFilter() {
   renderEntryList();
 }
 
-let expDateFilter = '';
 function filterExpensesByDate(value) {
   expDateFilter = value;
   document.getElementById('expDateClearBtn').style.display = value ? 'block' : 'none';
