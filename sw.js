@@ -2,13 +2,15 @@
 // worker itself has changed and go through install/activate again — without
 // it, edits to index.html alone can get stuck being served from a stale
 // cache indefinitely, since browsers only re-check the SW file byte-for-byte.
-const CACHE_NAME = 'ewenesu-carwash-v3';
+const CACHE_NAME = 'ewenesu-carwash-v4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
 ];
 // Install: cache all assets
 self.addEventListener('install', event => {
