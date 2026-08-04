@@ -1929,6 +1929,12 @@ function toggleQuickExpense(cat) {
     if (editingExpenseId === existing.id) cancelEditExpense();
     showExpQuickAlert('Expense removed', 'info');
   } else {
+    const dup = findDuplicateExpense(date, cat, null);
+    if (dup) {
+      showExpQuickAlert(`${dup.category} (VT ${Number(dup.amount).toLocaleString()}) has already been added for ${date}.`, 'error');
+      renderExpenseQuickRows();
+      return;
+    }
     const amount = expenseCategoryAmounts[cat] || 0;
     const expense = { id: Date.now(), date, category: cat, amount, notes: '' };
     expenses.unshift(expense);
@@ -2007,6 +2013,19 @@ function showExpQuickAlert(msg, type) {
   box.classList.remove('hidden');
   if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2000);
 }
+// One expense per category per day. Checked against full history (not just
+// the pending list) so a duplicate is still caught even after a month-end
+// clear, and matched case-insensitively so "Water" / "water" count as the
+// same category. excludeId lets an edit compare against everything except
+// the record being edited.
+function findDuplicateExpense(date, category, excludeId) {
+  const norm = category.trim().toLowerCase();
+  return historyExpenses.find(e =>
+    e.date === date &&
+    e.category.trim().toLowerCase() === norm &&
+    e.id !== excludeId
+  ) || null;
+}
 
 function handleSaveExpense() {
   const date = document.getElementById('expDate').value || todayStr();
@@ -2015,6 +2034,12 @@ function handleSaveExpense() {
   const notes = document.getElementById('expNotes').value.trim();
 
   if (amount <= 0) { showExpAlert('Enter an amount greater than 0.', 'error'); return; }
+
+  const dup = findDuplicateExpense(date, category, editingExpenseId);
+  if (dup) {
+    showExpAlert(`${dup.category} (VT ${Number(dup.amount).toLocaleString()}) has already been added for ${date}.`, 'error');
+    return;
+  }
 
   if (editingExpenseId !== null) {
     const idx = expenses.findIndex(e => e.id === editingExpenseId);
