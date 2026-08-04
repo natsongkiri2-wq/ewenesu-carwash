@@ -605,16 +605,22 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   <div class="body view" id="viewExpenses">
 
     <div class="card">
-      <div class="card-title">Add Expense</div>
+      <div class="card-title">Quick Add — Recurring Expenses</div>
       <div id="expEditingBanner" class="alert info hidden">✏️ Editing an expense — <button type="button" class="tag-edit" onclick="cancelEditExpense()">Cancel</button></div>
       <div class="field">
         <label>Date</label>
-        <input class="input" id="expDate" type="date">
+        <input class="input" id="expDate" type="date" oninput="renderExpenseQuickRows()">
       </div>
+      <div id="expQuickRows"></div>
+      <button type="button" class="attendant-chip add-new" onclick="addExpenseCategoryPrompt()" style="margin-top:4px;">+ Add Category</button>
+      <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a category to add it for this date — the amount fills in automatically from last time (edit it any time and that becomes the new default going forward). Tap again to remove it.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Add Custom Expense</div>
       <div class="field">
         <label>Category</label>
         <input class="input" id="expCategory" type="text" placeholder="e.g. Soap & Chemicals" autocomplete="off">
-        <div class="attendant-row" id="expPresetsRow" style="margin-top:8px;"></div>
       </div>
       <div class="field">
         <label>Amount (VT)</label>
@@ -899,6 +905,7 @@ const VEHICLE_PROFILE_KEY = 'ewenesu_vehicle_profiles'; // per-plate vehicle typ
 const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
 const EXPENSES_KEY    = 'ewenesu_expenses';   // pending, cleared on monthly download
 const EXPENSE_CATEGORIES_KEY = 'ewenesu_expense_categories'; // persisted quick-fill chips, starts from EXPENSE_PRESETS below
+const EXPENSE_CATEGORY_AMOUNTS_KEY = 'ewenesu_expense_category_amounts'; // each category's most-recent amount, reused as the default going forward
 const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — never cleared
 
 // Full-detail history — mirrors of entries/attendance/expenses that are
@@ -969,6 +976,7 @@ let entries = loadEntries();
 let editingEntryId = null;
 let staff = loadStaff();
 let expenseCategories = loadExpenseCategories();
+let expenseCategoryAmounts = loadExpenseCategoryAmounts();
 let attendantSalaries = loadAttendantSalaries();
 let vehicleProfiles = loadVehicleProfiles();
 let commissionRatePercent = loadCommissionRate();
@@ -996,6 +1004,7 @@ pruneOldHistory();
 commitHistory();
 ensureAttendantSalaryBackfill();
 ensureVehicleProfileBackfill();
+ensureExpenseCategoryAmountBackfill();
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 applyLayoutMode(localStorage.getItem(LAYOUT_MODE_KEY) || 'phone');
@@ -1060,8 +1069,8 @@ SERVICES.forEach(svc => {
   container.appendChild(row);
 });
 
-// Build expense presets
-renderExpensePresets();
+// Build expense quick-add rows
+renderExpenseQuickRows();
 
 // Build attendance tab
 renderAttDateLabel();
@@ -1098,6 +1107,15 @@ function loadExpenseCategories() {
 }
 function saveExpenseCategories() {
   localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(expenseCategories));
+}
+function loadExpenseCategoryAmounts() {
+  try {
+    const a = JSON.parse(localStorage.getItem(EXPENSE_CATEGORY_AMOUNTS_KEY));
+    return (a && typeof a === 'object') ? a : {};
+  } catch { return {}; }
+}
+function saveExpenseCategoryAmounts() {
+  localStorage.setItem(EXPENSE_CATEGORY_AMOUNTS_KEY, JSON.stringify(expenseCategoryAmounts));
 }
 function loadAttendantSalaries() {
   try {
@@ -1161,6 +1179,19 @@ function ensureAttendantSalaryBackfill() {
   });
   attendantSalaries = latestByName;
   saveAttendantSalaries();
+}
+// One-time backfill: if this device has never used the expense-amount-default
+// feature before, seed each category's default from the most recent amount
+// already on record for it, so nothing needs re-entering.
+function ensureExpenseCategoryAmountBackfill() {
+  if (localStorage.getItem(EXPENSE_CATEGORY_AMOUNTS_KEY) !== null) return;
+  const latestByCategory = {};
+  [...historyExpenses].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id).forEach(e => {
+    const amount = Number(e.amount) || 0;
+    if (amount > 0 && e.category) latestByCategory[e.category] = amount; // dates ascending, so last write wins
+  });
+  expenseCategoryAmounts = latestByCategory;
+  saveExpenseCategoryAmounts();
 }
 function loadAttendance() {
   try {
@@ -1844,14 +1875,88 @@ function renderAttLog() {
 }
 
 // ── EXPENSES TAB ──────────────────────────────────────────────────────────────
-function renderExpensePresets() {
-  const row = document.getElementById('expPresetsRow');
-  row.innerHTML = expenseCategories.map(cat =>
-    `<button type="button" class="attendant-chip" onclick="fillExpenseCategory('${escapeAttr(cat)}')">${cat}</button>`
-  ).join('') + `<button type="button" class="attendant-chip" onclick="addExpenseCategoryPrompt()">+ Add</button>`;
+// Quick Add: one row per recurring category, tap to add/remove a pending
+// expense for the selected date. Mirrors the Attendance tab's tap-to-mark-
+// present pattern — amount auto-fills from that category's last-used amount
+// and editing it inline becomes the new default going forward.
+function findQuickExpense(date, cat) {
+  return expenses.find(e => e.date === date && e.category === cat) || null;
 }
-function fillExpenseCategory(cat) {
-  document.getElementById('expCategory').value = cat;
+function renderExpenseQuickRows() {
+  const container = document.getElementById('expQuickRows');
+  if (!container) return;
+  const date = document.getElementById('expDate').value || todayStr();
+
+  if (expenseCategories.length === 0) {
+    container.innerHTML = `<span class="attendant-empty-hint">No recurring categories yet — tap "+ Add Category" below to set one up</span>`;
+    return;
+  }
+
+  container.innerHTML = expenseCategories.map(cat => {
+    const rec = findQuickExpense(date, cat);
+    const active = !!rec;
+    return `
+    <div class="att-row ${active ? 'active' : ''}" id="expqrow_${cssId(cat)}">
+      <div class="att-main" onclick="toggleQuickExpense('${escapeAttr(cat)}')">
+        <span class="att-dot">${active ? '●' : '○'}</span>
+        <span class="att-name">${cat}</span>
+        <span class="att-status">${active ? 'Added' : 'Add'}</span>
+      </div>
+      ${active ? `
+      <div class="att-pay">
+        <div class="att-pay-field">
+          <label>Amount (VT)</label>
+          <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
+            value="${rec.amount || ''}" placeholder="0"
+            oninput="updateQuickExpenseAmount('${escapeAttr(cat)}', this.value)">
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+function toggleQuickExpense(cat) {
+  const date = document.getElementById('expDate').value || todayStr();
+  const existing = findQuickExpense(date, cat);
+
+  if (existing) {
+    const idx = expenses.findIndex(e => e.id === existing.id);
+    if (idx !== -1) expenses.splice(idx, 1);
+    saveExpenses();
+    removeExpenseHistory(existing.id);
+    commitHistory();
+    if (editingExpenseId === existing.id) cancelEditExpense();
+  } else {
+    const amount = expenseCategoryAmounts[cat] || 0;
+    const expense = { id: Date.now(), date, category: cat, amount, notes: '' };
+    expenses.unshift(expense);
+    saveExpenses();
+    upsertExpenseHistory(expense);
+    commitHistory();
+  }
+  renderExpenseQuickRows();
+  renderExpenseList();
+  updateExpenseWeekTotal();
+  refreshAll();
+}
+function updateQuickExpenseAmount(cat, value) {
+  const date = document.getElementById('expDate').value || todayStr();
+  const existing = findQuickExpense(date, cat);
+  if (!existing) return;
+  const num = parseFloat(value);
+  const clean = isNaN(num) ? 0 : num;
+  existing.amount = clean;
+  // Whatever amount gets entered here becomes this category's standing
+  // default — it'll auto-fill next time it's quick-added, on any date,
+  // until it's changed again.
+  expenseCategoryAmounts[cat] = clean;
+  saveExpenseCategoryAmounts();
+  saveExpenses();
+  upsertExpenseHistory(existing);
+  commitHistory();
+  // Don't re-render expQuickRows here — it would rebuild inputs and lose focus.
+  renderExpenseList();
+  updateExpenseWeekTotal();
+  refreshAll();
 }
 function addExpenseCategoryPrompt() {
   const name = prompt('New expense category:');
@@ -1859,7 +1964,7 @@ function addExpenseCategoryPrompt() {
   const trimmed = name.trim();
   if (!trimmed) return;
   if (expenseCategories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
-    fillExpenseCategory(expenseCategories.find(c => c.toLowerCase() === trimmed.toLowerCase()));
+    renderExpenseQuickRows();
     return;
   }
   // New categories join just before "Other", so "Other" stays the last chip.
@@ -1867,8 +1972,7 @@ function addExpenseCategoryPrompt() {
   if (otherIdx === -1) expenseCategories.push(trimmed);
   else expenseCategories.splice(otherIdx, 0, trimmed);
   saveExpenseCategories();
-  renderExpensePresets();
-  fillExpenseCategory(trimmed);
+  renderExpenseQuickRows();
 }
 
 function showExpAlert(msg, type) {
@@ -1910,6 +2014,7 @@ function handleSaveExpense() {
       commitHistory();
     }
     renderExpenseList();
+    renderExpenseQuickRows();
     updateExpenseWeekTotal();
     refreshAll();
     cancelEditExpense();
@@ -1923,6 +2028,7 @@ function handleSaveExpense() {
   upsertExpenseHistory(expense);
   commitHistory();
   renderExpenseList();
+  renderExpenseQuickRows();
   updateExpenseWeekTotal();
   refreshAll();
 
@@ -1930,6 +2036,7 @@ function handleSaveExpense() {
   document.getElementById('expAmount').value = '';
   document.getElementById('expNotes').value = '';
   document.getElementById('expDate').value = todayStr();
+  renderExpenseQuickRows();
   showExpAlert('✓ Expense saved!', 'success');
 }
 
@@ -1945,6 +2052,7 @@ function editExpense(id) {
 
   document.getElementById('expEditingBanner').classList.remove('hidden');
   document.getElementById('expSaveBtn').textContent = 'Update Expense';
+  renderExpenseQuickRows();
 
   switchView('expenses');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1958,6 +2066,7 @@ function cancelEditExpense() {
   document.getElementById('expAmount').value = '';
   document.getElementById('expNotes').value = '';
   document.getElementById('expDate').value = todayStr();
+  renderExpenseQuickRows();
 }
 
 function deleteExpense(id) {
@@ -1971,6 +2080,7 @@ function deleteExpense(id) {
   commitHistory();
   if (editingExpenseId === id) cancelEditExpense();
   renderExpenseList();
+  renderExpenseQuickRows();
   updateExpenseWeekTotal();
   refreshAll();
 
@@ -1981,6 +2091,7 @@ function deleteExpense(id) {
     upsertExpenseHistory(removed);
     commitHistory();
     renderExpenseList();
+    renderExpenseQuickRows();
     updateExpenseWeekTotal();
     refreshAll();
   });
@@ -2714,6 +2825,7 @@ function switchView(v) {
     renderAttLog();
   } else if (v === 'expenses') {
     document.getElementById('viewExpenses').classList.add('active');
+    renderExpenseQuickRows();
     renderExpenseList();
     updateExpenseWeekTotal();
   } else if (v === 'revenue') {
