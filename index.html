@@ -641,6 +641,53 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <span class="total-value" id="expWeekTotal">VT 0</span>
     </div>
 
+    <div class="section-header">Expense Stats</div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="grid2">
+        <div class="field" style="margin-bottom:0;">
+          <label>From</label>
+          <input class="input" id="expStatFrom" type="date" onchange="renderExpenseStats()">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>To</label>
+          <input class="input" id="expStatTo" type="date" onchange="renderExpenseStats()">
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button type="button" class="attendant-chip" onclick="setExpStatsThisMonth()">This Month</button>
+        <button type="button" class="attendant-chip" onclick="setExpStatsAllTime()">All Time</button>
+      </div>
+    </div>
+
+    <div class="rev-stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Total Expenses</div>
+        <div class="stat-val" id="expStatTotal">VT 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Entries</div>
+        <div class="stat-val" id="expStatCount">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Avg / Day</div>
+        <div class="stat-val" id="expStatAvg">VT 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">% of Gross Sales</div>
+        <div class="stat-val" id="expStatPercent">0%</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Daily Trend</div>
+      <div class="rev-trend-wrap" id="expTrendWrap"></div>
+    </div>
+
+    <div class="card" id="expCategoryStatsCard">
+      <div class="card-title">By Category</div>
+      <div id="expCategoryBreakdown"></div>
+    </div>
+
     <div class="section-header">Pending Expenses</div>
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
       <input class="input" id="expDateSearch" type="date" style="flex:1;" oninput="filterExpensesByDate(this.value)">
@@ -1083,6 +1130,7 @@ renderAttLog();
 // Build expenses tab
 renderExpenseList();
 updateExpenseWeekTotal();
+setExpStatsThisMonth();
 
 // ── PERSISTENCE ───────────────────────────────────────────────────────────────
 function loadEntries() {
@@ -1557,6 +1605,7 @@ function refreshAll() {
   renderWeeklyVehicleSummary();
   renderWeekRangeLabel();
   renderRangeStats();
+  renderExpenseStats();
 }
 
 // ── ATTENDANCE TAB ──────────────────────────────────────────────────────────────
@@ -2207,6 +2256,108 @@ function updateExpenseWeekTotal() {
     .filter(e => e.date.slice(0, 7) === month)
     .reduce((a, e) => a + (Number(e.amount) || 0), 0);
   document.getElementById('expWeekTotal').textContent = 'VT ' + total.toLocaleString();
+}
+
+// ── EXPENSE STATS ────────────────────────────────────────────────────────────────
+// Mirrors the Revenue tab's stats pattern: a From/To range (with This Month /
+// All Time presets), a stat grid, a daily trend chart, and a by-category
+// breakdown — all sourced from the full retained expense history, so the
+// numbers hold even after a monthly clear.
+function setExpStatsThisMonth() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.getElementById('expStatFrom').value = toLocalDateStr(first);
+  document.getElementById('expStatTo').value = todayStr();
+  renderExpenseStats();
+}
+function setExpStatsAllTime() {
+  const dates = historyExpenses.map(e => e.date).sort();
+  const from = dates.length ? dates[0] : todayStr();
+  document.getElementById('expStatFrom').value = from;
+  document.getElementById('expStatTo').value = todayStr();
+  renderExpenseStats();
+}
+function aggregateExpenseStats(dates) {
+  const dateSet = new Set(dates);
+  const agg = { total: 0, count: 0, categories: {}, categoryCounts: {}, dailyTotals: {} };
+  historyExpenses.forEach(e => {
+    if (!dateSet.has(e.date)) return;
+    const amt = Number(e.amount) || 0;
+    const cat = e.category || 'Other';
+    agg.total += amt;
+    agg.count += 1;
+    agg.categories[cat] = (agg.categories[cat] || 0) + amt;
+    agg.categoryCounts[cat] = (agg.categoryCounts[cat] || 0) + 1;
+    agg.dailyTotals[e.date] = (agg.dailyTotals[e.date] || 0) + amt;
+  });
+  return agg;
+}
+function renderExpenseStats() {
+  const fromEl = document.getElementById('expStatFrom');
+  const toEl = document.getElementById('expStatTo');
+  if (!fromEl || !toEl || !fromEl.value || !toEl.value) return;
+
+  const dates = getRevenueDateRange(fromEl.value, toEl.value);
+  const agg = aggregateExpenseStats(dates);
+
+  document.getElementById('expStatTotal').textContent = 'VT ' + agg.total.toLocaleString();
+  document.getElementById('expStatCount').textContent = agg.count.toLocaleString();
+  const avgPerDay = dates.length > 0 ? agg.total / dates.length : 0;
+  document.getElementById('expStatAvg').textContent = 'VT ' + Math.round(avgPerDay).toLocaleString();
+
+  // % of gross sales over the same range, using the permanent revenue log —
+  // same figure the monthly PDF report shows.
+  const grossSales = dates.reduce((sum, d) => sum + (revenueLog[d] ? revenueLog[d].total : 0), 0);
+  const pct = grossSales > 0 ? (agg.total / grossSales) * 100 : 0;
+  document.getElementById('expStatPercent').textContent = pct.toFixed(1) + '%';
+
+  renderExpenseTrend(dates, agg);
+  renderExpenseCategoryBreakdown(agg);
+}
+function renderExpenseTrend(dates, agg) {
+  const wrap = document.getElementById('expTrendWrap');
+  if (!wrap) return;
+  if (dates.length === 0 || agg.count === 0) {
+    wrap.innerHTML = `<p class="rev-empty-note" style="width:100%;">No expenses logged yet — trend appears once expenses are saved.</p>`;
+    return;
+  }
+  // For "All Time" with lots of days, keep the chart readable by capping bars shown.
+  const shown = dates.length > 60 ? dates.slice(-60) : dates;
+  const totals = shown.map(d => agg.dailyTotals[d] || 0);
+  const max = Math.max(1, ...totals);
+
+  wrap.innerHTML = shown.map((d, i) => {
+    const total = totals[i];
+    const heightPct = Math.round((total / max) * 100);
+    const label = new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    return `
+      <div class="rev-trend-col" title="${label}: VT ${total.toLocaleString()}">
+        <div class="rev-trend-bar ${total === 0 ? 'empty' : ''}" style="height:${total === 0 ? 3 : Math.max(4, heightPct)}%;"></div>
+        <div class="rev-trend-label">${shown.length > 14 ? '' : label}</div>
+      </div>`;
+  }).join('');
+}
+function renderExpenseCategoryBreakdown(agg) {
+  const box = document.getElementById('expCategoryBreakdown');
+  if (!box) return;
+  const rows = Object.entries(agg.categories).sort((a, b) => b[1] - a[1]);
+  if (rows.length === 0) {
+    box.innerHTML = `<p class="rev-empty-note">No expenses recorded for this period.</p>`;
+    return;
+  }
+  const max = Math.max(...rows.map(r => r[1]));
+  box.innerHTML = rows.map(([cat, total]) => {
+    const pct = Math.round((total / max) * 100);
+    const cnt = agg.categoryCounts[cat] || 0;
+    return `
+    <div class="rev-bar-row">
+      <div class="rev-bar-top">
+        <span class="rev-bar-name">${cat} <span class="rev-bar-count">(${cnt}×)</span></span>
+        <span class="rev-bar-total">VT ${total.toLocaleString()}</span>
+      </div>
+      <div class="rev-bar-track"><div class="rev-bar-fill" style="width:${pct}%;background:var(--green);"></div></div>
+    </div>`;
+  }).join('');
 }
 
 // ── PRESET CHIPS (SERVICES) ──────────────────────────────────────────────────────
@@ -2877,6 +3028,7 @@ function switchView(v) {
     renderExpenseQuickRows();
     renderExpenseList();
     updateExpenseWeekTotal();
+    renderExpenseStats();
   } else if (v === 'revenue') {
     document.getElementById('viewRevenue').classList.add('active');
     renderRevenueTab();
