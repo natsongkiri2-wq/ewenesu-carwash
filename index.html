@@ -1996,11 +1996,10 @@ function showExpQuickAlert(msg, type) {
 
 function handleSaveExpense() {
   const date = document.getElementById('expDate').value || todayStr();
-  const category = document.getElementById('expCategory').value.trim();
+  const category = document.getElementById('expCategory').value.trim() || 'Other';
   const amount = parseFloat(document.getElementById('expAmount').value) || 0;
   const notes = document.getElementById('expNotes').value.trim();
 
-  if (!category) { showExpAlert('Enter a category for this expense.', 'error'); return; }
   if (amount <= 0) { showExpAlert('Enter an amount greater than 0.', 'error'); return; }
 
   if (editingExpenseId !== null) {
