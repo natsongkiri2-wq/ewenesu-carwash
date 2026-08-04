@@ -613,6 +613,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       </div>
       <div id="expQuickRows"></div>
       <button type="button" class="attendant-chip add-new" onclick="addExpenseCategoryPrompt()" style="margin-top:4px;">+ Add Category</button>
+      <div id="expQuickAlertBox" class="hidden" style="margin-top:12px;"></div>
       <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a category to add it for this date — the amount fills in automatically from last time (edit it any time and that becomes the new default going forward). Tap again to remove it.</div>
     </div>
 
@@ -1925,6 +1926,7 @@ function toggleQuickExpense(cat) {
     removeExpenseHistory(existing.id);
     commitHistory();
     if (editingExpenseId === existing.id) cancelEditExpense();
+    showExpQuickAlert('Expense removed', 'info');
   } else {
     const amount = expenseCategoryAmounts[cat] || 0;
     const expense = { id: Date.now(), date, category: cat, amount, notes: '' };
@@ -1932,6 +1934,7 @@ function toggleQuickExpense(cat) {
     saveExpenses();
     upsertExpenseHistory(expense);
     commitHistory();
+    showExpQuickAlert('✓ Expense saved!', 'success');
   }
   renderExpenseQuickRows();
   renderExpenseList();
@@ -1981,6 +1984,14 @@ function showExpAlert(msg, type) {
   box.textContent = msg;
   box.classList.remove('hidden');
   if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2800);
+}
+function showExpQuickAlert(msg, type) {
+  const box = document.getElementById('expQuickAlertBox');
+  if (!box) return;
+  box.className = `alert ${type}`;
+  box.textContent = msg;
+  box.classList.remove('hidden');
+  if (type !== 'error') setTimeout(() => box.classList.add('hidden'), 2000);
 }
 
 function handleSaveExpense() {
