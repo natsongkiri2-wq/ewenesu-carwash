@@ -613,6 +613,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       </div>
       <div id="expQuickRows"></div>
       <button type="button" class="attendant-chip add-new" onclick="addExpenseCategoryPrompt()" style="margin-top:4px;">+ Add Category</button>
+      <button class="btn-save" style="margin-top:12px;" onclick="handleSaveAllQuickExpenses()">💾 Save All</button>
       <div id="expQuickAlertBox" class="hidden" style="margin-top:12px;"></div>
       <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a category to add it for this date — the amount fills in automatically from last time (edit it any time and that becomes the new default going forward). Tap again to remove it.</div>
     </div>
@@ -1976,6 +1977,19 @@ function addExpenseCategoryPrompt() {
   else expenseCategories.splice(otherIdx, 0, trimmed);
   saveExpenseCategories();
   renderExpenseQuickRows();
+}
+// Everything tapped in Quick Add is already saved to localStorage the
+// instant it's added or its amount is edited — this button just gives a
+// clear, deliberate confirmation for the whole batch on this date, the way
+// "Save Attendance" does for the Attendance tab.
+function handleSaveAllQuickExpenses() {
+  const date = document.getElementById('expDate').value || todayStr();
+  const count = expenses.filter(e => e.date === date && expenseCategories.includes(e.category)).length;
+  if (count === 0) {
+    showExpQuickAlert('No recurring expenses added for this date yet.', 'error');
+    return;
+  }
+  showExpQuickAlert(`✓ ${count} expense${count !== 1 ? 's' : ''} saved!`, 'success');
 }
 
 function showExpAlert(msg, type) {
