@@ -3242,6 +3242,11 @@ function resetForm() {
     syncPresetSelection(s.key);
   });
   updateTotal();
+  // Send the cursor straight back to Registration Number so the next
+  // vehicle can be entered without an extra tap.
+  const plateInput = document.getElementById('plate');
+  plateInput.focus();
+  plateInput.select();
 }
 
 // ── BUILD & DOWNLOAD (WEEKLY REPORT) ────────────────────────────────────────────
