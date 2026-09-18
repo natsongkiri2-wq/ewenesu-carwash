@@ -369,7 +369,8 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 }
 .att-summary-name { font-weight: 700; color: var(--text); font-size: 13px; }
 .att-summary-days { color: var(--text3); font-size: 11px; margin-left: 6px; font-weight: 500; }
-.att-summary-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--purple); font-size: 15px; }
+.att-summary-total { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--purple); font-size: 15px; display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.att-summary-formula { font-family: 'DM Sans', sans-serif; font-weight: 500; color: var(--text3); font-size: 10px; white-space: nowrap; }
 .att-day-row { padding: 8px 4px 8px 14px; border-bottom: 1px dashed var(--border); }
 .att-day-row:last-child { border-bottom: none; }
 .att-day-top { display: flex; justify-content: space-between; align-items: center; }
@@ -1839,10 +1840,12 @@ function getAttendanceSummary(from, to) {
     if (from && date < from) return;
     if (to && date > to) return;
     Object.entries(dayObj).forEach(([name, rec]) => {
-      if (!byStaff[name]) byStaff[name] = { days: 0, pay: 0, breakdown: [] };
+      if (!byStaff[name]) byStaff[name] = { days: 0, salary: 0, bonus: 0, pay: 0, breakdown: [] };
       const salary = Number(rec.salary) || 0;
       const bonus = Number(rec.bonus) || 0;
       byStaff[name].days += 1;
+      byStaff[name].salary += salary;
+      byStaff[name].bonus += bonus;
       byStaff[name].pay += salary + bonus;
       byStaff[name].breakdown.push({ date, salary, bonus, total: salary + bonus });
     });
@@ -1857,7 +1860,10 @@ function renderAttendanceSummaryHTML(rows) {
     <div class="att-summary-person">
       <div class="att-summary-header">
         <span class="att-summary-name">${name}<span class="att-summary-days">${d.days} day${d.days !== 1 ? 's' : ''}</span></span>
-        <span class="att-summary-total">VT ${Math.round(d.pay).toLocaleString()}</span>
+        <span class="att-summary-total">
+          <span class="att-summary-formula">VT ${Math.round(d.salary).toLocaleString()} + VT ${Math.round(d.bonus).toLocaleString()} =</span>
+          VT ${Math.round(d.pay).toLocaleString()}
+        </span>
       </div>
       ${d.breakdown.map(b => `
         <div class="att-day-row">
