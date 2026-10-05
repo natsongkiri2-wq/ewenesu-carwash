@@ -434,9 +434,91 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   text-transform: uppercase; letter-spacing: 1px;
   margin: 16px 0 8px; padding-left: 2px;
 }
+/* ── LOGIN / PIN LOCK ── */
+#lkOverlay {
+  position:fixed; inset:0; z-index:9999; overflow-y:auto;
+  background:linear-gradient(160deg,#073D2D 0%,#0F7A5A 60%,#13A876 100%);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px 20px; font-family:'DM Sans',sans-serif;
+}
+#lkOverlay.lk-hidden { display:none; }
+#lkOverlay::before { content:''; position:fixed; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse at 80% 15%, rgba(255,255,255,0.09) 0%, transparent 60%); }
+.lk-wrap { position:relative; width:100%; max-width:340px; text-align:center; }
+.lk-badge { display:inline-block; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);
+  border-radius:20px; padding:3px 12px; font-size:10px; font-weight:600; letter-spacing:1.4px;
+  color:#A8EDD3; text-transform:uppercase; margin-bottom:10px; }
+.lk-title { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; color:#fff; line-height:1.1; }
+.lk-sub { font-size:13px; color:#B7F0DA; margin:8px 0 22px; min-height:36px; line-height:1.4; }
+.lk-dots { display:flex; justify-content:center; gap:16px; margin-bottom:12px; }
+.lk-dot { width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,0.6); transition:all .12s; }
+.lk-dot.on { background:#fff; border-color:#fff; transform:scale(1.1); }
+.lk-dots.shake { animation:lkShake .4s; }
+@keyframes lkShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-10px)} 40%,80%{transform:translateX(10px)} }
+.lk-msg { min-height:20px; font-size:13px; font-weight:600; color:#FFD6D6; margin-bottom:12px; }
+.lk-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.lk-key { height:64px; border-radius:18px; border:none; cursor:pointer;
+  font-family:'Syne',sans-serif; font-size:24px; font-weight:700; color:var(--green);
+  background:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.15); transition:transform .08s, background .08s; }
+.lk-key:active { transform:scale(0.94); background:var(--green-pale); }
+.lk-key.lk-ghost { background:transparent; box-shadow:none; color:#fff; font-size:20px; }
+.lk-key.lk-ghost:active { background:rgba(255,255,255,0.15); }
+.lk-key:disabled { opacity:.4; }
+.lk-link { margin-top:20px; background:none; border:none; color:#B7F0DA; font-size:13px; font-weight:600;
+  text-decoration:underline; cursor:pointer; font-family:'DM Sans',sans-serif; padding:8px; }
+.lk-input { width:100%; padding:14px; font-size:18px; text-align:center; letter-spacing:3px; text-transform:uppercase;
+  font-family:'Syne',sans-serif; font-weight:700; border-radius:12px; border:2px solid transparent;
+  background:#fff; color:var(--green); margin-bottom:12px; }
+.lk-input:focus { outline:none; border-color:var(--green-glow); }
+.lk-btn { width:100%; padding:15px; border-radius:13px; border:none; cursor:pointer;
+  font-family:'Syne',sans-serif; font-size:15px; font-weight:800; background:#fff; color:var(--green);
+  box-shadow:0 3px 10px rgba(0,0,0,0.15); margin-bottom:6px; }
+.lk-btn:active { transform:scale(0.98); }
+.lk-code { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; letter-spacing:5px; color:#fff;
+  background:rgba(255,255,255,0.14); border:1.5px dashed rgba(255,255,255,0.5);
+  border-radius:14px; padding:18px 8px; margin-bottom:14px; user-select:all; }
+.lk-hide { display:none !important; }
 </style>
 </head>
 <body>
+
+<!-- LOGIN / PIN LOCK -->
+<div id="lkOverlay" class="lk-hidden">
+  <div class="lk-wrap">
+    <div class="lk-badge">Ewenesu Car Wash</div>
+    <div class="lk-title" id="lkTitle">Welcome back</div>
+    <div class="lk-sub" id="lkSub">Enter your PIN</div>
+
+    <!-- PIN keypad panel -->
+    <div id="lkPinPanel">
+      <div class="lk-dots" id="lkDots">
+        <span class="lk-dot"></span><span class="lk-dot"></span><span class="lk-dot"></span><span class="lk-dot"></span>
+      </div>
+      <div class="lk-msg" id="lkMsg"></div>
+      <div class="lk-pad" id="lkPad">
+        <button class="lk-key" data-k="1">1</button><button class="lk-key" data-k="2">2</button><button class="lk-key" data-k="3">3</button>
+        <button class="lk-key" data-k="4">4</button><button class="lk-key" data-k="5">5</button><button class="lk-key" data-k="6">6</button>
+        <button class="lk-key" data-k="7">7</button><button class="lk-key" data-k="8">8</button><button class="lk-key" data-k="9">9</button>
+        <span></span><button class="lk-key" data-k="0">0</button><button class="lk-key lk-ghost" data-k="del" aria-label="Delete">⌫</button>
+      </div>
+      <button class="lk-link" id="lkForgot">Forgot PIN?</button>
+    </div>
+
+    <!-- Recovery entry panel -->
+    <div id="lkRecoverPanel" class="lk-hide">
+      <input class="lk-input" id="lkRecInput" type="text" maxlength="9" placeholder="XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <div class="lk-msg" id="lkRecMsg"></div>
+      <button class="lk-btn" id="lkRecGo">Verify Recovery Code</button>
+      <button class="lk-link" id="lkRecBack">← Back</button>
+    </div>
+
+    <!-- Show recovery code panel (after first setup) -->
+    <div id="lkCodePanel" class="lk-hide">
+      <div class="lk-code" id="lkCodeBox">----</div>
+      <button class="lk-btn" id="lkCodeDone">I've saved it — Continue</button>
+    </div>
+  </div>
+</div>
 
 <div id="offlineBanner">⚡ You are offline — entries are saved locally</div>
 
@@ -456,6 +538,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
         <div class="today-count" id="todayCount">0 vehicles</div>
         <button type="button" class="layout-toggle-btn" id="layoutToggleBtn" onclick="toggleLayoutMode()">🖥️ Tablet View</button>
         <button type="button" class="layout-toggle-btn" id="sunModeBtn" onclick="toggleSunMode()">☀️ Sun Mode</button>
+        <button type="button" class="layout-toggle-btn" id="lockBtn" onclick="lockApp()">🔒 Lock</button>
       </div>
     </div>
     <div class="tabs">
@@ -946,6 +1029,197 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
+
+// ── LOGIN / PIN LOCK (self-contained; own state; runs first) ──
+(function () {
+  // ── state (all declared first, before anything runs) ──
+  var AUTH_KEY = 'lk_auth';          // { salt, pin, rec }
+  var FAIL_KEY = 'lk_auth_fail';     // { n, until }
+  var SESSION_KEY = 'lk_unlocked';   // sessionStorage: survives refresh, not a closed app
+  var PIN_LEN = 4, MAX_TRIES = 5, LOCK_MS = 30000, IDLE_MS = 5 * 60 * 1000;
+  var mode = 'login';                      // login | new | confirm
+  var isReset = false, firstPin = '', buf = '', busy = false, idleTimer = null, lockTick = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var overlay = $('lkOverlay');
+
+  // ── storage helpers (never throw) ──
+  function lget(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function lset(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  // ── hashing: SHA-256 with salt; plain fallback only if crypto.subtle is unavailable ──
+  function sha(str) {
+    if (window.crypto && crypto.subtle) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function (b) {
+        return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      });
+    }
+    var h = 5381; for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+    return Promise.resolve('f' + h);
+  }
+  function randSalt() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+  function makeRecovery() {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', out = '';
+    for (var i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+
+  // ── UI helpers ──
+  function show(panel) {
+    ['lkPinPanel', 'lkRecoverPanel', 'lkCodePanel'].forEach(function (id) { $(id).classList.toggle('lk-hide', id !== panel); });
+  }
+  function setHead(t, s) { $('lkTitle').textContent = t; $('lkSub').textContent = s; }
+  function msg(t) { $('lkMsg').textContent = t || ''; }
+  function drawDots() {
+    var d = $('lkDots').children;
+    for (var i = 0; i < d.length; i++) d[i].classList.toggle('on', i < buf.length);
+  }
+  function shake() {
+    var el = $('lkDots'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    if (navigator.vibrate) navigator.vibrate(120);
+  }
+  function setPadDisabled(off) {
+    Array.prototype.forEach.call(document.querySelectorAll('#lkPad .lk-key'), function (b) { b.disabled = off; });
+  }
+
+  // ── lock / unlock ──
+  function unlock() {
+    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
+    overlay.classList.add('lk-hidden');
+    document.body.style.overflow = '';
+    buf = ''; drawDots(); resetIdle();
+  }
+  function lock() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    clearTimeout(idleTimer);
+    buf = ''; firstPin = ''; isReset = false; busy = false;
+    var auth = lget(AUTH_KEY);
+    mode = auth ? 'login' : 'new';
+    overlay.classList.remove('lk-hidden');
+    document.body.style.overflow = 'hidden';
+    show('lkPinPanel'); drawDots(); msg('');
+    $('lkForgot').classList.toggle('lk-hide', !auth);
+    if (mode === 'login') { setHead('Welcome back', 'Enter your PIN'); checkLockout(); }
+    else { setHead('Create your PIN', 'Choose a ' + PIN_LEN + '-digit PIN for this device'); }
+  }
+  window.lockApp = lock;   // call lockApp() from any "Lock" button in the app
+
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(lock, IDLE_MS);   // auto-lock after 5 min of no touching
+  }
+  ['touchstart', 'click', 'keydown', 'input'].forEach(function (ev) {
+    document.addEventListener(ev, function () { if (overlay.classList.contains('lk-hidden')) resetIdle(); }, { passive: true });
+  });
+
+  // ── failed-attempt lockout ──
+  function checkLockout() {
+    var f = lget(FAIL_KEY) || { n: 0, until: 0 };
+    var left = f.until - Date.now();
+    clearInterval(lockTick);
+    if (left > 0) {
+      setPadDisabled(true);
+      lockTick = setInterval(function () {
+        var l = Math.ceil((f.until - Date.now()) / 1000);
+        if (l <= 0) { clearInterval(lockTick); setPadDisabled(false); msg(''); }
+        else msg('Too many tries. Wait ' + l + 's');
+      }, 250);
+      msg('Too many tries. Wait ' + Math.ceil(left / 1000) + 's');
+      return true;
+    }
+    setPadDisabled(false);
+    return false;
+  }
+
+  // ── PIN entry ──
+  function press(k) {
+    if (busy) return;
+    if (mode === 'login' && checkLockout()) return;
+    if (k === 'del') { buf = buf.slice(0, -1); drawDots(); return; }
+    if (buf.length >= PIN_LEN) return;
+    buf += k; drawDots();
+    if (buf.length === PIN_LEN) { busy = true; setTimeout(submit, 120); }
+  }
+
+  function submit() {
+    var pin = buf;
+    if (mode === 'login') {
+      var auth = lget(AUTH_KEY);
+      sha(auth.salt + pin).then(function (h) {
+        if (h === auth.pin) { lset(FAIL_KEY, { n: 0, until: 0 }); busy = false; unlock(); return; }
+        var f = lget(FAIL_KEY) || { n: 0, until: 0 };
+        f.n++;
+        if (f.n >= MAX_TRIES) { f = { n: 0, until: Date.now() + LOCK_MS }; }
+        lset(FAIL_KEY, f);
+        shake(); buf = ''; drawDots(); busy = false;
+        if (!checkLockout()) msg('Wrong PIN. ' + (MAX_TRIES - f.n) + ' tries left');
+      });
+    } else if (mode === 'new') {
+      firstPin = pin; buf = ''; drawDots(); mode = 'confirm'; busy = false;
+      setHead('Confirm your PIN', 'Enter the same PIN again'); msg('');
+    } else if (mode === 'confirm') {
+      if (pin !== firstPin) {
+        shake(); buf = ''; firstPin = ''; drawDots(); mode = 'new'; busy = false;
+        setHead('Create your PIN', 'Choose a ' + PIN_LEN + '-digit PIN for this device');
+        msg("PINs didn't match. Try again"); return;
+      }
+      var salt = randSalt(), old = lget(AUTH_KEY);
+      if (isReset && old) {                      // recovery flow: keep the existing recovery code
+        sha(salt + pin).then(function (h) {
+          lset(AUTH_KEY, { salt: salt, pin: h, rec: old.rec, recSalt: old.recSalt });
+          lset(FAIL_KEY, { n: 0, until: 0 }); busy = false; isReset = false; unlock();
+        });
+      } else {                                   // first-time setup: generate + show recovery code
+        var code = makeRecovery(), recSalt = randSalt();
+        Promise.all([sha(salt + pin), sha(recSalt + code.replace('-', ''))]).then(function (r) {
+          lset(AUTH_KEY, { salt: salt, pin: r[0], rec: r[1], recSalt: recSalt });
+          $('lkCodeBox').textContent = code;
+          setHead('Save your recovery code', 'Write this down and keep it safe. It is the only way to reset a forgotten PIN. It is shown once.');
+          show('lkCodePanel'); busy = false;
+        });
+      }
+    }
+  }
+
+  // ── wire up buttons ──
+  $('lkPad').addEventListener('click', function (e) {
+    var b = e.target.closest('.lk-key'); if (b && b.dataset.k) press(b.dataset.k);
+  });
+  document.addEventListener('keydown', function (e) {       // desktop keyboard support
+    if (overlay.classList.contains('lk-hidden') || $('lkPinPanel').classList.contains('lk-hide')) return;
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key === 'Backspace') press('del');
+  });
+  $('lkCodeDone').addEventListener('click', unlock);
+
+  $('lkForgot').addEventListener('click', function () {
+    setHead('Reset your PIN', 'Enter the recovery code you saved when you set up the PIN');
+    $('lkRecInput').value = ''; $('lkRecMsg').textContent = ''; show('lkRecoverPanel');
+  });
+  $('lkRecBack').addEventListener('click', function () {
+    var f = lget(AUTH_KEY); setHead('Welcome back', 'Enter your PIN'); show('lkPinPanel'); msg(''); checkLockout();
+  });
+  $('lkRecInput').addEventListener('input', function (e) {
+    var v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    e.target.value = v.length > 4 ? v.slice(0, 4) + '-' + v.slice(4) : v;
+  });
+  $('lkRecGo').addEventListener('click', function () {
+    var auth = lget(AUTH_KEY); if (!auth) return;
+    var code = $('lkRecInput').value.replace('-', '');
+    sha(auth.recSalt + code).then(function (h) {
+      if (h === auth.rec) {
+        isReset = true; mode = 'new'; buf = ''; firstPin = ''; drawDots(); show('lkPinPanel'); msg('');
+        $('lkForgot').classList.add('lk-hide');
+        setHead('Create a new PIN', 'Choose a new ' + PIN_LEN + '-digit PIN');
+      } else { $('lkRecMsg').textContent = 'Wrong recovery code'; }
+    });
+  });
+
+  // ── boot ──
+  var already = false;
+  try { already = sessionStorage.getItem(SESSION_KEY) === '1'; } catch (e) {}
+  if (already && lget(AUTH_KEY)) { resetIdle(); } else { lock(); }
+})();
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const STORAGE_KEY    = 'ewenesu_entries';
