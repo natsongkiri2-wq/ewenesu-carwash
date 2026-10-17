@@ -10,6 +10,8 @@
 <meta name="theme-color" content="#0B5E45">
 <title>Ewenesu Car Wash Register</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
@@ -71,6 +73,7 @@ body {
   font-size: 10px; font-weight: 600; letter-spacing: 1.4px;
   color: #A8EDD3; text-transform: uppercase; margin-bottom: 6px;
 }
+.header-logo { width:30px; height:30px; border-radius:8px; border:1.5px solid rgba(255,255,255,0.35); flex-shrink:0; }
 .header-title { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: #fff; line-height: 1.1; }
 .header-date { font-size: 12px; color: #8EDFC0; margin-top: 4px; }
 .today-box { text-align: right; }
@@ -448,6 +451,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .lk-badge { display:inline-block; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);
   border-radius:20px; padding:3px 12px; font-size:10px; font-weight:600; letter-spacing:1.4px;
   color:#A8EDD3; text-transform:uppercase; margin-bottom:10px; }
+.lk-logo { display:block; width:72px; height:72px; margin:0 auto 12px; border-radius:18px; border:2px solid rgba(255,255,255,0.35); box-shadow:0 6px 18px rgba(0,0,0,0.25); }
 .lk-title { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; color:#fff; line-height:1.1; }
 .lk-sub { font-size:13px; color:#B7F0DA; margin:8px 0 22px; min-height:36px; line-height:1.4; }
 .lk-dots { display:flex; justify-content:center; gap:16px; margin-bottom:12px; }
@@ -485,6 +489,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 <!-- LOGIN / PIN LOCK -->
 <div id="lkOverlay" class="lk-hidden">
   <div class="lk-wrap">
+    <img class="lk-logo" src="logo-96.png" alt="Ewenesu Car Wash logo">
     <div class="lk-badge">Ewenesu Car Wash</div>
     <div class="lk-title" id="lkTitle">Welcome back</div>
     <div class="lk-sub" id="lkSub">Enter your PIN</div>
@@ -528,7 +533,10 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   <div class="header">
     <div class="header-top">
       <div>
-        <div class="brand-badge">Ewenesu Car Wash</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <img class="header-logo" src="logo-96.png" alt="Ewenesu Car Wash logo">
+          <div class="brand-badge" style="margin-bottom:0;">Ewenesu Car Wash</div>
+        </div>
         <div class="header-title">Daily Register</div>
         <div class="header-date" id="headerDate"></div>
       </div>
@@ -4239,6 +4247,7 @@ function generateManagementFeedback(a) {
   return { positive, concerns, suggestions };
 }
 
+const EWENESU_LOGO_B64 = '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';
 function renderMonthlyPerformancePDF(month, a) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -4299,9 +4308,10 @@ function renderMonthlyPerformancePDF(month, a) {
 
   const monthLabel = new Date(month + '-01T00:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
+  try { doc.addImage('data:image/png;base64,' + EWENESU_LOGO_B64, 'PNG', margin, y - 22, 36, 36); } catch (e) {}
   doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(...GREEN);
-  doc.text('Ewenesu Car Wash', margin, y);
-  y += 20;
+  doc.text('Ewenesu Car Wash', margin + 46, y);
+  y += 26;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...TEXT2);
   doc.text(`Monthly Performance Report — ${monthLabel}`, margin, y);
   y += 12;

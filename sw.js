@@ -2,11 +2,15 @@
 // worker itself has changed and go through install/activate again — without
 // it, edits to index.html alone can get stuck being served from a stale
 // cache indefinitely, since browsers only re-check the SW file byte-for-byte.
-const CACHE_NAME = 'ewenesu-carwash-v5';
+const CACHE_NAME = 'ewenesu-carwash-v6';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
+  './logo-96.png',
   'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
