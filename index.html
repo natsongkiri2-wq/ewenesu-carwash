@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -28,7 +28,7 @@
   --border:      #D9E5DF;
   --text:        #0D2318;
   --text2:       #4A6858;
-  --text3:       #8BA899;
+  --text3:       #526E5D;
   --radius:      16px;
   --shadow:      0 2px 16px rgba(11,94,69,0.08);
   --content-max: 430px;
@@ -46,7 +46,7 @@ body {
 /* ── OFFLINE BANNER ─────────────────────────────── */
 #offlineBanner {
   display: none;
-  background: #E65100; color: #fff;
+  background: #C43E00; color: #fff;
   text-align: center; font-size: 12px; font-weight: 600;
   padding: 6px; letter-spacing: 0.3px;
 }
@@ -156,12 +156,12 @@ body.sun-mode .tag-time { color: var(--text); }
 .field { margin-bottom: 12px; }
 .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
 .input {
-  width: 100%; padding: 11px 13px; font-size: 15px; font-family: 'DM Sans', sans-serif;
+  width: 100%; padding: 11px 13px; font-size: 16px; font-family: 'DM Sans', sans-serif;
   background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
   color: var(--text); transition: border-color 0.15s, box-shadow 0.15s;
   -webkit-appearance: none;
 }
-.input:focus { outline: none; border-color: var(--green-glow); box-shadow: 0 0 0 3px rgba(93,202,170,0.15); }
+.input:focus { outline: 2px solid var(--green); outline-offset: 1px; border-color: var(--green-glow); box-shadow: 0 0 0 3px rgba(93,202,170,0.15); }
 .input.plate { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 select.input {
@@ -210,13 +210,13 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .svc-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .svc-currency { font-size: 10px; color: var(--text3); font-weight: 700; }
 .svc-input {
-  width: 80px; text-align: right; font-size: 15px; font-weight: 700;
+  width: 80px; text-align: right; font-size: 16px; font-weight: 700;
   font-family: 'Syne', sans-serif; padding: 6px 8px; border-radius: 8px;
   border: 1.5px solid var(--border); background: white; color: var(--text);
   transition: all 0.15s; -webkit-appearance: none;
 }
 .svc-row.active .svc-input { border-color: var(--svc-color); color: var(--svc-color); }
-.svc-input:focus { outline: none; }
+.svc-input:focus { outline: 2px solid var(--green); outline-offset: 1px; }
 .svc-presets { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; padding-left: 32px; }
 .preset-chip {
   padding: 5px 11px; border-radius: 8px; font-size: 12px; font-weight: 700;
@@ -244,10 +244,10 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .att-input {
   width: 100%; padding: 8px 10px; border-radius: 8px;
   border: 1.5px solid var(--border); font-family: 'Syne', sans-serif;
-  font-weight: 700; font-size: 14px; background: white; color: var(--text);
+  font-weight: 700; font-size: 16px; background: white; color: var(--text);
   -webkit-appearance: none;
 }
-.att-input:focus { outline: none; border-color: var(--purple); }
+.att-input:focus { outline: 2px solid var(--purple); outline-offset: 1px; border-color: var(--purple); }
 
 /* ── TOTAL ───────────────────────────────────────── */
 .total-bar {
@@ -266,14 +266,14 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   background: #FFF8E1; border: 1.5px solid #FFD54F; border-radius: 12px;
   margin-bottom: 12px;
 }
-.paid-label { flex: 1; font-size: 14px; font-weight: 600; color: #E65100; }
+.paid-label { flex: 1; font-size: 14px; font-weight: 600; color: #C43E00; }
 .paid-input {
   width: 100px; text-align: right; font-size: 16px; font-weight: 800;
   font-family: 'Syne', sans-serif; padding: 6px 10px; border-radius: 8px;
-  border: 1.5px solid #FFD54F; background: white; color: #E65100;
+  border: 1.5px solid #FFD54F; background: white; color: #C43E00;
   -webkit-appearance: none;
 }
-.paid-input:focus { outline: none; border-color: #FF8F00; }
+.paid-input:focus { outline: 2px solid #C43E00; outline-offset: 1px; border-color: #FF8F00; }
 
 /* ── ALERTS ──────────────────────────────────────── */
 .alert { border-radius: 10px; padding: 11px 14px; font-size: 14px; margin-bottom: 12px; }
@@ -301,7 +301,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
   width: 100%; padding: 16px; border-radius: 13px;
   font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800;
   letter-spacing: 0.5px; border: none; cursor: pointer;
-  background: linear-gradient(135deg, #0F7A5A, #13A876);
+  background: linear-gradient(135deg, #0B5E45, #0F7A5A);
   color: #fff; box-shadow: 0 4px 16px rgba(11,94,69,0.3);
   transition: opacity 0.15s, transform 0.1s;
 }
@@ -310,7 +310,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
 /* ── SYNC / WEEKLY VIEW ──────────────────────────── */
 .pending-badge {
-  display: inline-block; background: #FF6F00; color: #fff;
+  display: inline-block; background: #C43E00; color: #fff;
   border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700;
   margin-left: 6px;
 }
@@ -408,7 +408,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .entry-tags { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
 .tag-time { background: var(--bg); color: var(--text2); }
-.tag-paid { background: #FFF8E1; color: #E65100; }
+.tag-paid { background: #FFF8E1; color: #C43E00; }
 .tag-outstanding { background: #FDECEC; color: #8B1A1A; }
 .tag-date { background: #E8EAF6; color: #283593; font-size: 10px; }
 .tag-delete {
@@ -486,7 +486,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .lk-input { width:100%; padding:14px; font-size:18px; text-align:center; letter-spacing:3px; text-transform:uppercase;
   font-family:'Syne',sans-serif; font-weight:700; border-radius:12px; border:2px solid transparent;
   background:#fff; color:var(--green); margin-bottom:12px; }
-.lk-input:focus { outline:none; border-color:var(--green-glow); }
+.lk-input:focus { outline:2px solid #fff; outline-offset:2px; border-color:var(--green-glow); }
 .lk-btn { width:100%; padding:15px; border-radius:13px; border:none; cursor:pointer;
   font-family:'Syne',sans-serif; font-size:15px; font-weight:800; background:#fff; color:var(--green);
   box-shadow:0 3px 10px rgba(0,0,0,0.15); margin-bottom:6px; }
@@ -583,7 +583,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title">Vehicle Details</div>
       <div id="entryEditingBanner" class="alert info hidden">✏️ Editing a sales entry — <button type="button" class="tag-edit" onclick="cancelEditEntry()">Cancel</button></div>
       <div class="field">
-        <label>Date</label>
+        <label for="entryDate">Date</label>
         <div style="display:flex; gap:8px; align-items:center;">
           <input class="input" id="entryDate" type="date" style="flex:1;" onchange="updateEntryDateTodayBtn()">
           <button type="button" class="attendant-chip" id="entryDateTodayBtn" onclick="setEntryDateToday()" style="white-space:nowrap;display:none;">Today</button>
@@ -591,11 +591,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       </div>
       <div class="grid2">
         <div class="field">
-          <label>Registration Number</label>
+          <label for="plate">Registration Number</label>
           <input class="input plate" id="plate" type="text" placeholder="e.g. 24089" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" onblur="autofillFromPlate()">
         </div>
         <div class="field">
-          <label>Vehicle Type</label>
+          <label for="vehicleType">Vehicle Type</label>
           <select class="input" id="vehicleType" onchange="toggleOtherField('vehicleType')"></select>
         </div>
       </div>
@@ -603,25 +603,25 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <input class="input hidden" id="vehicleTypeOther" type="text" placeholder="Enter vehicle type" autocomplete="off" style="margin:-4px 0 12px;">
       <div class="grid2">
         <div class="field">
-          <label>Brand</label>
+          <label for="brand">Brand</label>
           <select class="input" id="brand" onchange="toggleOtherField('brand')"></select>
           <input class="input hidden" id="brandOther" type="text" placeholder="Enter brand" autocomplete="off" style="margin-top:8px;">
         </div>
         <div class="field">
-          <label>Model</label>
+          <label for="model">Model</label>
           <select class="input" id="model" onchange="toggleOtherField('model')"></select>
           <input class="input hidden" id="modelOther" type="text" placeholder="Enter model" autocomplete="off" style="margin-top:8px;">
         </div>
       </div>
       <div class="field">
-        <label>Time</label>
+        <label for="timeInput">Time</label>
         <div style="display:flex; gap:8px; align-items:center;">
           <input class="input" id="timeInput" type="time" style="flex:1;">
           <button type="button" class="attendant-chip" onclick="setTimeNow()" style="white-space:nowrap;">Now</button>
         </div>
       </div>
       <div class="field" style="margin-bottom:0;">
-        <label>Notes (optional)</label>
+        <label for="entryNotes">Notes (optional)</label>
         <input class="input" id="entryNotes" type="text" placeholder="e.g. Wants extra wax next time; scratch on rear door (pre-existing)" autocomplete="off">
       </div>
     </div>
@@ -638,7 +638,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <div class="paid-row">
       <span class="paid-label">💰 Amount Paid</span>
-      <span style="font-size:11px;color:#E65100;font-weight:700;">VT</span>
+      <span style="font-size:11px;color:#C43E00;font-weight:700;">VT</span>
       <input class="paid-input" id="paid" type="number" placeholder="0" min="0" step="50" inputmode="numeric" oninput="updateOutstandingHint()">
     </div>
     <div id="outstandingHint" class="hidden" style="font-size:12px;color:#C62828;font-weight:600;margin:-6px 0 12px;padding-left:4px;"></div>
@@ -683,11 +683,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title">This Period — Presence & Pay</div>
       <div class="grid2">
         <div class="field">
-          <label>From</label>
+          <label for="attRangeFrom">From</label>
           <input class="input" id="attRangeFrom" type="date" onchange="renderAttWeekSummary()">
         </div>
         <div class="field">
-          <label>To</label>
+          <label for="attRangeTo">To</label>
           <input class="input" id="attRangeTo" type="date" onchange="renderAttWeekSummary()">
         </div>
       </div>
@@ -713,7 +713,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title">Quick Add — Recurring Expenses</div>
       <div id="expEditingBanner" class="alert info hidden">✏️ Editing an expense — <button type="button" class="tag-edit" onclick="cancelEditExpense()">Cancel</button></div>
       <div class="field">
-        <label>Date</label>
+        <label for="expDate">Date</label>
         <input class="input" id="expDate" type="date" oninput="renderExpenseQuickRows()">
       </div>
       <div id="expQuickRows"></div>
@@ -726,15 +726,15 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="card">
       <div class="card-title">Add Custom Expense</div>
       <div class="field">
-        <label>Category</label>
+        <label for="expCategory">Category</label>
         <input class="input" id="expCategory" type="text" placeholder="e.g. Soap & Chemicals" autocomplete="off">
       </div>
       <div class="field">
-        <label>Amount (VT)</label>
+        <label for="expAmount">Amount (VT)</label>
         <input class="input" id="expAmount" type="number" placeholder="0" min="0" step="50" inputmode="numeric">
       </div>
       <div class="field">
-        <label>Notes (optional)</label>
+        <label for="expNotes">Notes (optional)</label>
         <input class="input" id="expNotes" type="text" placeholder="e.g. 5L Dawn dish soap" autocomplete="off">
       </div>
       <div id="expAlertBox" class="hidden"></div>
@@ -750,11 +750,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="card" style="margin-bottom:14px;">
       <div class="grid2">
         <div class="field" style="margin-bottom:0;">
-          <label>From</label>
+          <label for="expStatFrom">From</label>
           <input class="input" id="expStatFrom" type="date" onchange="renderExpenseStats()">
         </div>
         <div class="field" style="margin-bottom:0;">
-          <label>To</label>
+          <label for="expStatTo">To</label>
           <input class="input" id="expStatTo" type="date" onchange="renderExpenseStats()">
         </div>
       </div>
@@ -813,11 +813,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <div class="card" style="margin-bottom:14px;">
       <div class="grid2">
         <div class="field" style="margin-bottom:0;">
-          <label>From</label>
+          <label for="revFrom">From</label>
           <input class="input" id="revFrom" type="date" onchange="renderRevenueTab()">
         </div>
         <div class="field" style="margin-bottom:0;">
-          <label>To</label>
+          <label for="revTo">To</label>
           <input class="input" id="revTo" type="date" onchange="renderRevenueTab()">
         </div>
       </div>
@@ -934,11 +934,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title">Check a Week (for Payout)</div>
       <div class="grid2">
         <div class="field">
-          <label>From</label>
+          <label for="rangeFrom">From</label>
           <input class="input" id="rangeFrom" type="date" onchange="renderRangeStats()">
         </div>
         <div class="field">
-          <label>To</label>
+          <label for="rangeTo">To</label>
           <input class="input" id="rangeTo" type="date" onchange="renderRangeStats()">
         </div>
       </div>
@@ -946,7 +946,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="grid2" style="align-items:end;margin-bottom:8px;">
         <div style="font-size:11px;color:var(--text3);line-height:1.4;">Tithe is a fixed 10% of gross sales. Commission is editable and is calculated on sales after Tithe (before Expenses and Salaries).</div>
         <div class="field" style="margin-bottom:0;">
-          <label>Commission Rate (%)</label>
+          <label for="commissionRateInput">Commission Rate (%)</label>
           <input class="input" id="commissionRateInput" type="number" min="0" max="100" step="0.5" onchange="updateCommissionRate(this.value)">
         </div>
       </div>
@@ -1020,7 +1020,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 
     <!-- Actions -->
     <div class="field">
-      <label>Select Month to Download</label>
+      <label for="downloadMonth">Select Month to Download</label>
       <input class="input" id="downloadMonth" type="month">
     </div>
     <button class="btn-sync" id="syncBtn" onclick="buildAndDownload()" disabled>
@@ -2057,14 +2057,14 @@ function renderAttRows() {
       ${present ? `
       <div class="att-pay">
         <div class="att-pay-field">
-          <label>Salary (VT)</label>
-          <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
+          <label for="attsal_${cssId(name)}">Salary (VT)</label>
+          <input id="attsal_${cssId(name)}" type="number" class="att-input" min="0" step="50" inputmode="numeric"
             value="${rec.salary || ''}" placeholder="0"
             oninput="updateAttPay('${escapeAttr(name)}','salary',this.value)">
         </div>
         <div class="att-pay-field">
-          <label>Bonus (VT)</label>
-          <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
+          <label for="attbon_${cssId(name)}">Bonus (VT)</label>
+          <input id="attbon_${cssId(name)}" type="number" class="att-input" min="0" step="50" inputmode="numeric"
             value="${rec.bonus || ''}" placeholder="0"
             oninput="updateAttPay('${escapeAttr(name)}','bonus',this.value)">
         </div>
@@ -2340,8 +2340,8 @@ function renderExpenseQuickRows() {
       ${active ? `
       <div class="att-pay">
         <div class="att-pay-field">
-          <label>Amount (VT)</label>
-          <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
+          <label for="expamt_${cssId(cat)}">Amount (VT)</label>
+          <input id="expamt_${cssId(cat)}" type="number" class="att-input" min="0" step="50" inputmode="numeric"
             value="${rec.amount || ''}" placeholder="0"
             oninput="updateQuickExpenseAmount('${escapeAttr(cat)}', this.value)">
         </div>
@@ -3265,7 +3265,7 @@ function renderPaymentDiscrepancies() {
           <span class="entry-plate">${escapeHtml(plate)}</span>
           ${desc ? `<span class="entry-desc">${escapeHtml(desc)}</span>` : ''}
         </div>
-        <span class="entry-total" style="color:${isOver ? '#E65100' : '#8B1A1A'};">${isOver ? '+' : '-'}VT ${Math.round(Math.abs(diff)).toLocaleString()}</span>
+        <span class="entry-total" style="color:${isOver ? '#C43E00' : '#8B1A1A'};">${isOver ? '+' : '-'}VT ${Math.round(Math.abs(diff)).toLocaleString()}</span>
       </div>
       <div class="entry-tags">
         <span class="tag tag-date">${e.date}</span>
