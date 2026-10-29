@@ -283,6 +283,19 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .alert.warn { background: #FFF8E1; border: 1.5px solid #FFB300; color: #8B5A00; }
 .hidden { display: none !important; }
 
+/* ── IN-APP INPUT DIALOG (replaces window.prompt so phones show the right keyboard) ── */
+.dlg-overlay { position: fixed; inset: 0; z-index: 5000; background: rgba(13,35,24,0.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dlg { width: 100%; max-width: 360px; background: var(--card); border-radius: var(--radius); padding: 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+.dlg-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: var(--green); margin-bottom: 6px; }
+.dlg-msg { font-size: 14px; color: var(--text2); margin-bottom: 12px; line-height: 1.4; }
+.dlg-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+.dlg-msg:empty, .dlg-label:empty, .dlg-error:empty { display: none; }
+.dlg-error { color: #8B1A1A; font-size: 13px; margin-top: 8px; }
+.dlg-actions { display: flex; gap: 10px; margin-top: 14px; }
+.dlg-btn { flex: 1; min-height: 44px; border-radius: 12px; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; border: 1.5px solid var(--border); background: #fff; color: var(--text); cursor: pointer; }
+.dlg-ok { background: var(--green); border-color: var(--green); color: #fff; }
+.dlg-btn:active { transform: scale(0.98); }
+
 /* ── SAVE BUTTON ─────────────────────────────────── */
 .btn-save {
   width: 100%; padding: 16px; border-radius: 13px;
@@ -1712,6 +1725,73 @@ function escapeAttr(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
+
+// askInput: small in-app replacement for window.prompt(). A native prompt always
+// shows the plain text keyboard; this one can open the number pad (inputmode) and
+// shows a validation message inside the box instead of a separate alert.
+// Resolves to the typed text, or null if cancelled.
+// opts: { title, message, label, value, placeholder, inputmode, autocapitalize, okLabel, validate(text) -> error text or '' }
+function askInput(opts) {
+  opts = opts || {};
+  return new Promise(resolve => {
+    const prevFocus = document.activeElement;
+    const overlay = document.createElement('div');
+    overlay.className = 'dlg-overlay';
+    overlay.innerHTML =
+      '<div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">' +
+        '<div class="dlg-title" id="dlgTitle"></div>' +
+        '<div class="dlg-msg"></div>' +
+        '<label class="dlg-label" for="dlgInput"></label>' +
+        '<input class="input dlg-input" id="dlgInput" type="text" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done">' +
+        '<div class="dlg-error" role="alert"></div>' +
+        '<div class="dlg-actions">' +
+          '<button type="button" class="dlg-btn dlg-cancel">Cancel</button>' +
+          '<button type="button" class="dlg-btn dlg-ok"></button>' +
+        '</div>' +
+      '</div>';
+    const q = sel => overlay.querySelector(sel);
+    const input = q('.dlg-input'), errEl = q('.dlg-error'), okBtn = q('.dlg-ok'), cancelBtn = q('.dlg-cancel');
+    q('.dlg-title').textContent = opts.title || '';
+    q('.dlg-msg').textContent = opts.message || '';
+    q('.dlg-label').textContent = opts.label || '';
+    okBtn.textContent = opts.okLabel || 'OK';
+    if (opts.placeholder) input.placeholder = opts.placeholder;
+    if (opts.inputmode) input.setAttribute('inputmode', opts.inputmode);
+    if (opts.autocapitalize) input.setAttribute('autocapitalize', opts.autocapitalize);
+    input.value = opts.value == null ? '' : String(opts.value);
+
+    function close(result) {
+      document.removeEventListener('keydown', onKey, true);
+      overlay.remove();
+      if (prevFocus && prevFocus.tagName === 'BUTTON' && prevFocus.focus) prevFocus.focus();
+      resolve(result);
+    }
+    function submit() {
+      const v = input.value.trim();
+      const err = opts.validate ? opts.validate(v) : '';
+      if (err) { errEl.textContent = err; input.focus(); return; }
+      close(v);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(null); return; }
+      if (e.key === 'Enter' && e.target === input) { e.preventDefault(); submit(); return; }
+      if (e.key === 'Tab') {
+        const items = [input, cancelBtn, okBtn];
+        const i = items.indexOf(document.activeElement);
+        if (e.shiftKey && i <= 0) { e.preventDefault(); okBtn.focus(); }
+        else if (!e.shiftKey && (i === -1 || i === items.length - 1)) { e.preventDefault(); input.focus(); }
+      }
+    }
+    okBtn.addEventListener('click', submit);
+    cancelBtn.addEventListener('click', () => close(null));
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
+    input.addEventListener('input', () => { errEl.textContent = ''; });
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(overlay);
+    input.focus();
+    input.select();
+  });
+}
 // IMPORTANT: use the device's LOCAL calendar date, not toISOString() (which is
 // always UTC). Vanuatu is UTC+11 with no daylight saving, so toISOString()
 // would report the wrong (previous) date for roughly the first 11 hours of
@@ -2075,8 +2155,8 @@ function updateAttPay(name, field, value) {
   renderWeeklyStats();
 }
 
-function addAttendant() {
-  const name = prompt('Attendant name:');
+async function addAttendant() {
+  const name = await askInput({ title: 'Add Attendant', label: 'Attendant name', placeholder: 'Full name', okLabel: 'Add', autocapitalize: 'words' });
   if (!name) return;
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -2321,8 +2401,8 @@ function updateQuickExpenseAmount(cat, value) {
   updateExpenseWeekTotal();
   refreshAll();
 }
-function addExpenseCategoryPrompt() {
-  const name = prompt('New expense category:');
+async function addExpenseCategoryPrompt() {
+  const name = await askInput({ title: 'New Expense Category', label: 'Category name', placeholder: 'e.g. Soap & Chemicals', okLabel: 'Add', autocapitalize: 'words' });
   if (!name) return;
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -2796,20 +2876,24 @@ function deleteEntry(id) {
 // Records a payment against an entry — works whether the entry is still in
 // this month's pending list or has already been archived to history, and
 // keeps the permanent revenue log's "paid" total in sync either way.
-function applyPayment(id) {
+async function applyPayment(id) {
   const pendingEntry = entries.find(e => e.id === id);
   const historyEntry = historyEntries.find(e => e.id === id);
   const source = pendingEntry || historyEntry;
   if (!source) return;
 
   const outstanding = Math.max(0, (Number(source.total_services) || 0) - (Number(source.paid) || 0));
-  const input = prompt(
-    `Apply payment for ${source.plate || 'this vehicle'} (outstanding VT ${outstanding.toLocaleString()}):`,
-    outstanding > 0 ? outstanding : ''
-  );
+  const input = await askInput({
+    title: 'Add Payment',
+    message: `${source.plate || 'This vehicle'} \u2014 outstanding VT ${outstanding.toLocaleString()}`,
+    label: 'Payment amount (VT)',
+    value: outstanding > 0 ? outstanding : '',
+    inputmode: 'numeric',
+    okLabel: 'Save Payment',
+    validate: v => (isNaN(parseFloat(v)) || parseFloat(v) <= 0) ? 'Enter a valid payment amount greater than 0.' : ''
+  });
   if (input === null) return;
   const amount = parseFloat(input);
-  if (isNaN(amount) || amount <= 0) { alert('Enter a valid payment amount greater than 0.'); return; }
 
   const newPaid = (Number(source.paid) || 0) + amount;
   if (pendingEntry) pendingEntry.paid = newPaid;
