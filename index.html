@@ -2000,6 +2000,7 @@ function renderAttRows() {
         <span class="att-dot">${present ? '●' : '○'}</span>
         <span class="att-name">${name}</span>
         <span class="att-status">${present ? 'Present' : 'Absent'}</span>
+        <button type="button" class="tag-edit" onclick="event.stopPropagation(); renameAttendant('${escapeAttr(name)}')">Edit</button>
         <button type="button" class="tag-delete" onclick="event.stopPropagation(); removeAttendant('${escapeAttr(name)}')">Remove</button>
       </div>
       ${present ? `
@@ -2128,6 +2129,49 @@ function addAttendant() {
     saveAttendance();
   }
   if (!attLocked) mirrorAttendanceDateToHistory(selectedAttDate);
+  commitHistory();
+  renderAttRows();
+  renderAttWeekSummary();
+  renderAttLog();
+  refreshAll();
+}
+
+// Fixes the spelling of an attendant's name everywhere it's stored — team
+// list, default salary, and every attendance/pay record (past weeks included,
+// paid or not: only the label changes, never an amount).
+function renameAttendant(oldName) {
+  const input = prompt('Edit attendant name:', oldName);
+  if (input === null) return;
+  const newName = input.trim();
+  if (!newName || newName === oldName) return;
+  if (staff.some(s => s !== oldName && s.toLowerCase() === newName.toLowerCase())) {
+    alert(`"${newName}" is already on the team. Pick a different name.`);
+    return;
+  }
+  const clash = [attendance, historyAttendance].some(book =>
+    Object.values(book).some(day => day[oldName] && day[newName]));
+  if (clash) {
+    alert(`"${newName}" already has attendance records on the same days as ${oldName}, so the two can't be merged. Pick a different name.`);
+    return;
+  }
+  const renameIn = book => {
+    Object.keys(book).forEach(date => {
+      if (!book[date][oldName]) return;
+      const day = {};
+      Object.keys(book[date]).forEach(k => { day[k === oldName ? newName : k] = book[date][k]; });
+      book[date] = day;
+    });
+  };
+  staff = staff.map(s => s === oldName ? newName : s);
+  saveStaff();
+  if (oldName in attendantSalaries) {
+    attendantSalaries[newName] = attendantSalaries[oldName];
+    delete attendantSalaries[oldName];
+    saveAttendantSalaries();
+  }
+  renameIn(attendance);
+  renameIn(historyAttendance);
+  saveAttendance();
   commitHistory();
   renderAttRows();
   renderAttWeekSummary();
