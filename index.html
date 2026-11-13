@@ -656,6 +656,8 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div class="card-title" id="attCardTitle">Attendance & Pay — Today</div>
       <div id="attRows"></div>
       <button type="button" class="attendant-chip add-new" onclick="addAttendant()" style="margin-top:4px;">+ Add Attendant</button>
+      <button type="button" class="attendant-chip hidden" id="hiddenStaffToggle" onclick="toggleHiddenStaffList()" style="margin-top:4px;"></button>
+      <div id="hiddenStaffList" class="hidden" style="margin-top:10px;"></div>
       <div class="alert info" id="bonusInfoBox" style="margin-top:12px;text-align:left;"></div>
       <button type="button" class="attendant-chip" onclick="applyAutoBonusToAll()" style="margin-top:10px;width:100%;text-align:center;">⚡ Apply Auto Bonus to All Present</button>
       <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4;">Tap a name to mark present or absent for this date. Salary and bonus both fill in automatically — salary uses each person's most recent rate (edit it any time and that becomes their new default going forward), bonus is VT100 per vehicle washed that day from the 15th vehicle onward. Use "Apply Auto Bonus" again later in the day if more vehicles come in after someone was marked present. Use the From/To range below to check a specific pay week's totals before payout.</div>
@@ -1266,6 +1268,7 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const STORAGE_KEY    = 'ewenesu_entries';
 const STAFF_KEY       = 'ewenesu_staff';
+const HIDDEN_STAFF_KEY = 'ewenesu_hidden_staff'; // attendants no longer working — kept on file, hidden from the daily list
 const STAFF_SALARY_KEY = 'ewenesu_attendant_salaries'; // each person's most-recent salary, reused as the default going forward
 const VEHICLE_PROFILE_KEY = 'ewenesu_vehicle_profiles'; // per-plate vehicle type/brand/model, reused as the default going forward
 const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
@@ -1346,6 +1349,8 @@ const VEHICLE_MODELS = ['Hilux', 'Land Cruiser', 'Prado', 'Corolla', 'Vitz', 'RA
 let entries = loadEntries();
 let editingEntryId = null;
 let staff = loadStaff();
+let hiddenStaff = loadHiddenStaff();
+let showHiddenStaff = false;
 let expenseCategories = loadExpenseCategories();
 let expenseCategoryAmounts = loadExpenseCategoryAmounts();
 let attendantSalaries = loadAttendantSalaries();
@@ -1474,6 +1479,13 @@ function loadStaff() {
 }
 function saveStaff() {
   localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
+}
+function loadHiddenStaff() {
+  try { const h = JSON.parse(localStorage.getItem(HIDDEN_STAFF_KEY)); return Array.isArray(h) ? h : []; }
+  catch (e) { return []; }
+}
+function saveHiddenStaff() {
+  localStorage.setItem(HIDDEN_STAFF_KEY, JSON.stringify(hiddenStaff));
 }
 function loadExpenseCategories() {
   try {
@@ -1985,13 +1997,14 @@ function renderAttRows() {
   const container = document.getElementById('attRows');
   const dayRecord = attendance[selectedAttDate] || {};
 
+  renderHiddenStaffList();
   if (staff.length === 0) {
     container.innerHTML = `<span class="attendant-empty-hint">No attendants yet — tap "+ Add Attendant" below to set up your team</span>`;
     return;
   }
 
   const attLocked = isDateLocked(selectedAttDate);
-  container.innerHTML = (attLocked ? lockedNoteHTML(selectedAttDate) : '') + staff.map(name => {
+  container.innerHTML = (attLocked ? lockedNoteHTML(selectedAttDate) : '') + staff.filter(name => !hiddenStaff.includes(name) || dayRecord[name]).map(name => {
     const rec = dayRecord[name];
     const present = !!rec;
     return `
@@ -2001,6 +2014,9 @@ function renderAttRows() {
         <span class="att-name">${name}</span>
         <span class="att-status">${present ? 'Present' : 'Absent'}</span>
         <button type="button" class="tag-edit" onclick="event.stopPropagation(); renameAttendant('${escapeAttr(name)}')">Edit</button>
+        ${hiddenStaff.includes(name)
+          ? `<button type="button" class="tag-edit" onclick="event.stopPropagation(); unhideAttendant('${escapeAttr(name)}')">Unhide</button>`
+          : `<button type="button" class="tag-edit" onclick="event.stopPropagation(); hideAttendant('${escapeAttr(name)}')">Hide</button>`}
         <button type="button" class="tag-delete" onclick="event.stopPropagation(); removeAttendant('${escapeAttr(name)}')">Remove</button>
       </div>
       ${present ? `
@@ -2116,6 +2132,10 @@ function addAttendant() {
     staff.push(trimmed);
     saveStaff();
   }
+  if (hiddenStaff.includes(trimmed)) {
+    hiddenStaff = hiddenStaff.filter(n => n !== trimmed);
+    saveHiddenStaff();
+  }
   // On a locked (paid) date the new person joins the team but isn't marked
   // present — that date's pay is already settled.
   const attLocked = isDateLocked(selectedAttDate);
@@ -2134,6 +2154,48 @@ function addAttendant() {
   renderAttWeekSummary();
   renderAttLog();
   refreshAll();
+}
+
+// Hide = someone who's no longer working. They drop off the daily list but
+// stay on file with their salary default and every past pay record, and can
+// be brought back with Unhide if re-employed. (Remove, by contrast, deletes.)
+function hideAttendant(name) {
+  if (hiddenStaff.includes(name)) return;
+  hiddenStaff.push(name);
+  saveHiddenStaff();
+  renderAttRows();
+  const stillShown = attendance[selectedAttDate] && attendance[selectedAttDate][name];
+  showAttAlert(stillShown
+    ? `${name} hidden — still shown on this date because they're marked present.`
+    : `${name} hidden. Find them under "Hidden attendants" to bring them back.`, 'info');
+}
+function unhideAttendant(name) {
+  hiddenStaff = hiddenStaff.filter(n => n !== name);
+  saveHiddenStaff();
+  renderAttRows();
+  showAttAlert(`✓ ${name} is back on the list.`, 'success');
+}
+function toggleHiddenStaffList() {
+  showHiddenStaff = !showHiddenStaff;
+  renderHiddenStaffList();
+}
+function renderHiddenStaffList() {
+  const btn = document.getElementById('hiddenStaffToggle');
+  const list = document.getElementById('hiddenStaffList');
+  if (!btn || !list) return;
+  const names = staff.filter(n => hiddenStaff.includes(n));
+  btn.classList.toggle('hidden', names.length === 0);
+  btn.textContent = `${showHiddenStaff ? '▾' : '▸'} Hidden attendants (${names.length})`;
+  list.classList.toggle('hidden', names.length === 0 || !showHiddenStaff);
+  list.innerHTML = names.map(name => `
+    <div class="att-row">
+      <div class="att-main" style="cursor:default;">
+        <span class="att-dot">○</span>
+        <span class="att-name">${name}</span>
+        <span class="att-status">Hidden</span>
+        <button type="button" class="tag-edit" onclick="unhideAttendant('${escapeAttr(name)}')">Unhide</button>
+      </div>
+    </div>`).join('');
 }
 
 // Fixes the spelling of an attendant's name everywhere it's stored — team
@@ -2164,6 +2226,10 @@ function renameAttendant(oldName) {
   };
   staff = staff.map(s => s === oldName ? newName : s);
   saveStaff();
+  if (hiddenStaff.includes(oldName)) {
+    hiddenStaff = hiddenStaff.map(n => n === oldName ? newName : n);
+    saveHiddenStaff();
+  }
   if (oldName in attendantSalaries) {
     attendantSalaries[newName] = attendantSalaries[oldName];
     delete attendantSalaries[oldName];
@@ -2183,6 +2249,10 @@ function removeAttendant(name) {
   if (!confirm(`Remove ${name} from your team? This deletes them from staff and clears their attendance records for this period.`)) return;
   staff = staff.filter(s => s !== name);
   saveStaff();
+  if (hiddenStaff.includes(name)) {
+    hiddenStaff = hiddenStaff.filter(n => n !== name);
+    saveHiddenStaff();
+  }
   delete attendantSalaries[name];
   saveAttendantSalaries();
   const affectedDates = [];
