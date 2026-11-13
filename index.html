@@ -283,6 +283,11 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 .alert.warn { background: #FFF8E1; border: 1.5px solid #FFB300; color: #8B5A00; }
 .hidden { display: none !important; }
 
+/* ── PAID-WEEK LOCK (Reports → Check a Week) ─────── */
+.wk-modal { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.wk-modal-box { background: var(--card); border-radius: 16px; padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+.wk-lock-note { font-size: 12px; line-height: 1.4; background: #FFF4E0; border: 1px solid #F0C36D; color: #7A4B00; border-radius: 10px; padding: 9px 11px; margin-bottom: 10px; }
+
 /* ── SAVE BUTTON ─────────────────────────────────── */
 .btn-save {
   width: 100%; padding: 16px; border-radius: 13px;
@@ -963,6 +968,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
           <div class="stat-val" id="rangeNet">VT 0</div>
         </div>
       </div>
+      <div id="paidWeekStatus" style="font-size:12px;line-height:1.5;color:var(--text2);margin-top:12px;"></div>
+      <button type="button" class="btn-save" id="paidWeekBtn" style="margin-top:10px;" onclick="handleMarkWeekPaid()">✓ This Week All Paid</button>
+      <button type="button" class="btn-backup hidden" id="paidWeekEditBtn" style="margin-top:10px;margin-bottom:0;" onclick="openWeekUnlock()">🔓 Edit Week (special access)</button>
     </div>
 
     <!-- Stats -->
@@ -1024,6 +1032,25 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     <input type="file" id="importBackupInput" accept=".json" class="hidden" onchange="handleImportBackup(event)">
     <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.4;margin:-8px 0 12px;">Moving to a new phone or tablet? Tap Export here, send that file to the new device (email, USB, cloud drive, etc.), then open the app there and tap Import.</div>
 
+  </div>
+</div>
+
+<!-- Special-access unlock for a week that's been marked All Paid -->
+<div class="wk-modal hidden" id="wkUnlockModal">
+  <div class="wk-modal-box">
+    <div class="card-title" style="margin-bottom:8px;">Edit a Paid Week</div>
+    <div id="wkUnlockInfo" style="font-size:13px;color:var(--text2);line-height:1.45;margin-bottom:12px;"></div>
+    <div class="field">
+      <label>Reason for editing (required)</label>
+      <textarea class="input" id="wkUnlockReason" rows="3" maxlength="200" placeholder="e.g. Friday's Hilux was entered at the wrong price"></textarea>
+    </div>
+    <div class="field">
+      <label>App PIN</label>
+      <input class="input" id="wkUnlockPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••">
+    </div>
+    <div id="wkUnlockMsg" class="hidden" style="margin-bottom:10px;"></div>
+    <button type="button" class="btn-save" id="wkUnlockGo" onclick="confirmWeekUnlock()">Unlock Week for Editing</button>
+    <button type="button" class="btn-backup" style="margin-top:10px;margin-bottom:0;" onclick="closeWeekUnlock()">Cancel</button>
   </div>
 </div>
 
@@ -1223,6 +1250,13 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
     });
   });
 
+  // ── PIN check for the paid-week unlock (Reports → Check a Week) ──
+  window.lkVerifyPin = function (pin) {
+    var a = lget(AUTH_KEY);
+    if (!a || !a.pin) return Promise.resolve(false);
+    return sha(a.salt + pin).then(function (h) { return h === a.pin; });
+  };
+
   // ── boot ──
   var already = false;
   try { already = sessionStorage.getItem(SESSION_KEY) === '1'; } catch (e) {}
@@ -1247,6 +1281,11 @@ const REVENUE_LOG_KEY = 'ewenesu_revenue_log'; // permanent, per-day totals — 
 const HISTORY_ENTRIES_KEY     = 'ewenesu_history_entries';
 const HISTORY_ATTENDANCE_KEY  = 'ewenesu_history_attendance';
 const HISTORY_EXPENSES_KEY    = 'ewenesu_history_expenses';
+// Weeks marked "All Paid" — every date inside one is locked against changes.
+// Shape: [{ id, from, to, lockedAt, commissionRate, totals }]
+const PAID_WEEKS_KEY     = 'ewenesu_paid_weeks';
+// Every special-access unlock, with the reason given. Shape: [{ from, to, lockedAt, unlockedAt, reason }]
+const PAID_WEEK_LOG_KEY  = 'ewenesu_paid_week_log';
 const HISTORY_RETENTION_DAYS  = 365;
 
 // Bonus rule: VT100 per vehicle, counting only from the 15th vehicle washed
@@ -1322,6 +1361,10 @@ ensureRevenueLog();
 let historyEntries    = loadHistoryEntries();
 let historyAttendance = loadHistoryAttendance();
 let historyExpenses   = loadHistoryExpenses();
+let paidWeeks   = loadPaidWeeks();
+let paidWeekLog = loadPaidWeekLog();
+let wkUnlockFails = 0;
+let wkUnlockBlockedUntil = 0;
 
 // Declared up here (not just before their own filter functions) because
 // renderExpenseList() and friends run during initial boot, before the script
@@ -1947,7 +1990,8 @@ function renderAttRows() {
     return;
   }
 
-  container.innerHTML = staff.map(name => {
+  const attLocked = isDateLocked(selectedAttDate);
+  container.innerHTML = (attLocked ? lockedNoteHTML(selectedAttDate) : '') + staff.map(name => {
     const rec = dayRecord[name];
     const present = !!rec;
     return `
@@ -1963,13 +2007,13 @@ function renderAttRows() {
         <div class="att-pay-field">
           <label>Salary (VT)</label>
           <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
-            value="${rec.salary || ''}" placeholder="0"
+            value="${rec.salary || ''}" placeholder="0" ${attLocked ? 'disabled' : ''}
             oninput="updateAttPay('${escapeAttr(name)}','salary',this.value)">
         </div>
         <div class="att-pay-field">
           <label>Bonus (VT)</label>
           <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
-            value="${rec.bonus || ''}" placeholder="0"
+            value="${rec.bonus || ''}" placeholder="0" ${attLocked ? 'disabled' : ''}
             oninput="updateAttPay('${escapeAttr(name)}','bonus',this.value)">
         </div>
       </div>` : ''}
@@ -2000,6 +2044,7 @@ function renderBonusInfoBox() {
 }
 
 function applyAutoBonusToAll() {
+  if (blockIfLocked(selectedAttDate)) return;
   if (!attendance[selectedAttDate] || Object.keys(attendance[selectedAttDate]).length === 0) {
     alert('No attendants marked present for this date yet.');
     return;
@@ -2018,6 +2063,7 @@ function applyAutoBonusToAll() {
 }
 
 function toggleAttendance(name) {
+  if (blockIfLocked(selectedAttDate)) return;
   if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
   if (attendance[selectedAttDate][name]) {
     delete attendance[selectedAttDate][name];
@@ -2039,6 +2085,7 @@ function toggleAttendance(name) {
 }
 
 function updateAttPay(name, field, value) {
+  if (isDateLocked(selectedAttDate)) return; // inputs are disabled on a locked date; this is the backstop
   if (!attendance[selectedAttDate] || !attendance[selectedAttDate][name]) return;
   const num = parseFloat(value);
   const clean = isNaN(num) ? 0 : num;
@@ -2068,8 +2115,11 @@ function addAttendant() {
     staff.push(trimmed);
     saveStaff();
   }
-  if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
-  if (!attendance[selectedAttDate][trimmed]) {
+  // On a locked (paid) date the new person joins the team but isn't marked
+  // present — that date's pay is already settled.
+  const attLocked = isDateLocked(selectedAttDate);
+  if (!attLocked && !attendance[selectedAttDate]) attendance[selectedAttDate] = {};
+  if (!attLocked && !attendance[selectedAttDate][trimmed]) {
     attendance[selectedAttDate][trimmed] = {
       present: true,
       salary: attendantSalaries[trimmed] || 0,
@@ -2077,7 +2127,7 @@ function addAttendant() {
     };
     saveAttendance();
   }
-  mirrorAttendanceDateToHistory(selectedAttDate);
+  if (!attLocked) mirrorAttendanceDateToHistory(selectedAttDate);
   commitHistory();
   renderAttRows();
   renderAttWeekSummary();
@@ -2093,7 +2143,7 @@ function removeAttendant(name) {
   saveAttendantSalaries();
   const affectedDates = [];
   Object.keys(attendance).forEach(date => {
-    if (attendance[date][name]) {
+    if (attendance[date][name] && !isDateLocked(date)) { // paid weeks keep their records
       affectedDates.push(date);
       delete attendance[date][name];
       if (Object.keys(attendance[date]).length === 0) delete attendance[date];
@@ -2231,7 +2281,8 @@ function renderExpenseQuickRows() {
     return;
   }
 
-  container.innerHTML = expenseCategories.map(cat => {
+  const expLocked = isDateLocked(date);
+  container.innerHTML = (expLocked ? lockedNoteHTML(date) : '') + expenseCategories.map(cat => {
     const rec = findQuickExpense(date, cat);
     const active = !!rec;
     return `
@@ -2246,7 +2297,7 @@ function renderExpenseQuickRows() {
         <div class="att-pay-field">
           <label>Amount (VT)</label>
           <input type="number" class="att-input" min="0" step="50" inputmode="numeric"
-            value="${rec.amount || ''}" placeholder="0"
+            value="${rec.amount || ''}" placeholder="0" ${expLocked ? 'disabled' : ''}
             oninput="updateQuickExpenseAmount('${escapeAttr(cat)}', this.value)">
         </div>
       </div>` : ''}
@@ -2255,6 +2306,7 @@ function renderExpenseQuickRows() {
 }
 function toggleQuickExpense(cat) {
   const date = document.getElementById('expDate').value || todayStr();
+  if (blockIfLocked(date)) return;
   const existing = findQuickExpense(date, cat);
 
   if (existing) {
@@ -2287,6 +2339,7 @@ function toggleQuickExpense(cat) {
 }
 function updateQuickExpenseAmount(cat, value) {
   const date = document.getElementById('expDate').value || todayStr();
+  if (isDateLocked(date)) return; // input is disabled on a locked date; this is the backstop
   const existing = findQuickExpense(date, cat);
   if (!existing) return;
   const num = parseFloat(value);
@@ -2370,6 +2423,13 @@ function handleSaveExpense() {
   const amount = parseFloat(document.getElementById('expAmount').value) || 0;
   const notes = document.getElementById('expNotes').value.trim();
 
+  // Paid-week lock: same rule as sales entries.
+  if (editingExpenseId !== null) {
+    const lockedOld = expenses.find(e => e.id === editingExpenseId) || historyExpenses.find(e => e.id === editingExpenseId);
+    if (lockedOld && blockIfLocked(lockedOld.date)) return;
+  }
+  if (blockIfLocked(date)) return;
+
   if (amount <= 0) { showExpAlert('Enter an amount greater than 0.', 'error'); return; }
 
   const dup = findDuplicateExpense(date, category, editingExpenseId);
@@ -2429,6 +2489,7 @@ function handleSaveExpense() {
 function editExpense(id) {
   const e = expenses.find(x => x.id === id) || historyExpenses.find(x => x.id === id);
   if (!e) return;
+  if (blockIfLocked(e.date)) return;
   editingExpenseId = id;
 
   document.getElementById('expDate').value     = e.date;
@@ -2459,6 +2520,7 @@ function deleteExpense(id) {
   const idx = expenses.findIndex(e => e.id === id);
   const removed = idx !== -1 ? expenses[idx] : historyExpenses.find(e => e.id === id);
   if (!removed) return;
+  if (blockIfLocked(removed.date)) return;
 
   if (idx !== -1) expenses.splice(idx, 1);
   saveExpenses();
@@ -2753,6 +2815,7 @@ function deleteEntry(id) {
   const idx = entries.findIndex(e => e.id === id);
   if (idx === -1) return;
   const removed = entries[idx];
+  if (blockIfLocked(removed.date)) return;
 
   entries.splice(idx, 1);
   saveEntries();
@@ -2946,6 +3009,204 @@ function renderRangeStats() {
   const netEl = document.getElementById('rangeNet');
   netEl.textContent = 'VT ' + r.net.toLocaleString();
   netEl.classList.toggle('negative', r.net < 0);
+  renderPaidWeekStatus();
+}
+
+// ── PAID-WEEK LOCK ──────────────────────────────────────────────────────────────
+// "This Week All Paid" locks every date in the From–To range above: sales
+// entries, attendance/pay and expenses on those dates can't be added, edited
+// or deleted. "Edit Week (special access)" reopens it — needs the app PIN and
+// a written reason, which is kept in a permanent log.
+function loadPaidWeeks() {
+  try { const w = JSON.parse(localStorage.getItem(PAID_WEEKS_KEY)); return Array.isArray(w) ? w : []; }
+  catch (e) { return []; }
+}
+function savePaidWeeks() { localStorage.setItem(PAID_WEEKS_KEY, JSON.stringify(paidWeeks)); }
+function loadPaidWeekLog() {
+  try { const l = JSON.parse(localStorage.getItem(PAID_WEEK_LOG_KEY)); return Array.isArray(l) ? l : []; }
+  catch (e) { return []; }
+}
+function savePaidWeekLog() { localStorage.setItem(PAID_WEEK_LOG_KEY, JSON.stringify(paidWeekLog)); }
+
+function findPaidWeekLock(date) {
+  return paidWeeks.find(w => date >= w.from && date <= w.to) || null;
+}
+function isDateLocked(date) { return !!date && !!findPaidWeekLock(date); }
+// Returns true (and tells the user why) if any of the given dates is locked.
+function blockIfLocked(...dates) {
+  const hit = dates.find(d => isDateLocked(d));
+  if (!hit) return false;
+  const w = findPaidWeekLock(hit);
+  alert(
+    `🔒 ${hit} is in a week marked ALL PAID (${fmtShortDate(w.from)} → ${fmtShortDate(w.to)}) and is locked.\n\n` +
+    `To change it, go to Reports → Check a Week → "Edit Week (special access)".`
+  );
+  return true;
+}
+function lockedNoteHTML(date) {
+  const w = findPaidWeekLock(date);
+  return `<div class="wk-lock-note">🔒 This date is in a week marked All Paid (${fmtShortDate(w.from)} → ${fmtShortDate(w.to)}). It can't be changed unless the week is reopened from Reports → Check a Week.</div>`;
+}
+function escHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function fmtLockStamp(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function getPayoutRange() {
+  const fromEl = document.getElementById('rangeFrom');
+  const toEl = document.getElementById('rangeTo');
+  if (!fromEl || !toEl) return null;
+  let from = fromEl.value, to = toEl.value;
+  if (!from || !to) return null;
+  if (from > to) { [from, to] = [to, from]; }
+  return { from, to };
+}
+function datesInRange(from, to) {
+  const out = [];
+  const d = new Date(from + 'T00:00:00');
+  const end = new Date(to + 'T00:00:00');
+  while (d <= end && out.length < 400) { out.push(toLocalDateStr(d)); d.setDate(d.getDate() + 1); }
+  return out;
+}
+function isRangeFullyLocked(from, to) {
+  return datesInRange(from, to).every(isDateLocked);
+}
+function paidWeeksOverlapping(from, to) {
+  return paidWeeks.filter(w => w.from <= to && w.to >= from);
+}
+
+function renderPaidWeekStatus() {
+  const statusEl = document.getElementById('paidWeekStatus');
+  const lockBtn = document.getElementById('paidWeekBtn');
+  const editBtn = document.getElementById('paidWeekEditBtn');
+  if (!statusEl || !lockBtn || !editBtn) return;
+  const r = getPayoutRange();
+  if (!r) { statusEl.innerHTML = ''; return; }
+
+  const overlapping = paidWeeksOverlapping(r.from, r.to);
+  const fullyLocked = isRangeFullyLocked(r.from, r.to);
+  let html = '';
+  if (fullyLocked) {
+    html += overlapping.map(w =>
+      `<div>🔒 <strong>All Paid — locked.</strong> ${fmtShortDate(w.from)} → ${fmtShortDate(w.to)}, marked paid ${fmtLockStamp(w.lockedAt)}` +
+      (w.totals ? ` (Net VT ${Number(w.totals.net).toLocaleString()} at ${w.commissionRate}% commission)` : '') +
+      `. Sales, attendance and expenses on these dates can't be changed.</div>`
+    ).join('');
+  } else if (overlapping.length > 0) {
+    html += overlapping.map(w =>
+      `<div>🔒 Part of this range is already locked as paid: ${fmtShortDate(w.from)} → ${fmtShortDate(w.to)}.</div>`
+    ).join('');
+  }
+  // Most recent special-access unlocks touching this range, newest first.
+  const reopened = paidWeekLog.filter(l => l.from <= r.to && l.to >= r.from).slice(-3).reverse();
+  if (reopened.length > 0) {
+    html += reopened.map(l =>
+      `<div style="margin-top:6px;">🔓 Reopened ${fmtLockStamp(l.unlockedAt)} (${fmtShortDate(l.from)} → ${fmtShortDate(l.to)}) — reason: <em>${escHtml(l.reason)}</em></div>`
+    ).join('');
+    if (!fullyLocked) html += `<div style="margin-top:6px;">Tap "This Week All Paid" again when the edits are done to lock it back.</div>`;
+  }
+  statusEl.innerHTML = html;
+  lockBtn.classList.toggle('hidden', fullyLocked);
+  editBtn.classList.toggle('hidden', overlapping.length === 0);
+}
+
+function refreshLockedViews() {
+  renderRangeStats();
+  renderAttRows();
+  renderExpenseQuickRows();
+}
+
+function handleMarkWeekPaid() {
+  const r = getPayoutRange();
+  if (!r) { alert('Pick a From and To date first.'); return; }
+  if (r.to > todayStr()) { alert('The "To" date is in the future. A week can only be marked paid up to today.'); return; }
+  if (isRangeFullyLocked(r.from, r.to)) return;
+
+  const t = computeRangeTotals(r.from, r.to);
+  const days = datesInRange(r.from, r.to).length;
+  const ok = confirm(
+    `Mark ${r.from} → ${r.to} (${days} day${days !== 1 ? 's' : ''}) as ALL PAID?\n\n` +
+    `Sales VT ${t.sales.toLocaleString()} · Salaries + Bonus VT ${t.salaries.toLocaleString()} · Net VT ${t.net.toLocaleString()}\n\n` +
+    `This locks every sales entry, attendance/pay record and expense on these dates — nothing can be added, edited or deleted.` +
+    (r.to === todayStr() ? `\n\n⚠️ This includes TODAY. No more vehicles or expenses can be recorded for today unless the week is reopened.` : '')
+  );
+  if (!ok) return;
+
+  paidWeeks.push({
+    id: Date.now(), from: r.from, to: r.to,
+    lockedAt: new Date().toISOString(),
+    commissionRate: commissionRatePercent,
+    totals: t
+  });
+  savePaidWeeks();
+  refreshLockedViews();
+}
+
+function showWkUnlockMsg(msg) {
+  const box = document.getElementById('wkUnlockMsg');
+  box.className = 'alert error';
+  box.textContent = msg;
+}
+function openWeekUnlock() {
+  const r = getPayoutRange();
+  if (!r) return;
+  const locks = paidWeeksOverlapping(r.from, r.to);
+  if (locks.length === 0) return;
+  document.getElementById('wkUnlockInfo').innerHTML =
+    `This reopens ${locks.map(w => `<strong>${fmtShortDate(w.from)} → ${fmtShortDate(w.to)}</strong>`).join(' and ')} so entries can be changed. ` +
+    `The reason is saved and shown on this week from now on.`;
+  document.getElementById('wkUnlockReason').value = '';
+  document.getElementById('wkUnlockPin').value = '';
+  document.getElementById('wkUnlockMsg').className = 'hidden';
+  document.getElementById('wkUnlockModal').classList.remove('hidden');
+}
+function closeWeekUnlock() {
+  document.getElementById('wkUnlockModal').classList.add('hidden');
+  document.getElementById('wkUnlockPin').value = '';
+}
+function confirmWeekUnlock() {
+  const r = getPayoutRange();
+  if (!r) return;
+  const reason = document.getElementById('wkUnlockReason').value.trim();
+  const pin = document.getElementById('wkUnlockPin').value.trim();
+  if (reason.length < 3) { showWkUnlockMsg('Write a reason for editing this week.'); return; }
+  if (!pin) { showWkUnlockMsg('Enter the app PIN.'); return; }
+  if (Date.now() < wkUnlockBlockedUntil) {
+    showWkUnlockMsg(`Too many wrong PINs. Try again in ${Math.ceil((wkUnlockBlockedUntil - Date.now()) / 1000)}s.`);
+    return;
+  }
+  if (typeof window.lkVerifyPin !== 'function') { showWkUnlockMsg('PIN check is unavailable. Close and reopen the app, then try again.'); return; }
+
+  const goBtn = document.getElementById('wkUnlockGo');
+  goBtn.disabled = true;
+  window.lkVerifyPin(pin).then(valid => {
+    goBtn.disabled = false;
+    if (!valid) {
+      wkUnlockFails += 1;
+      if (wkUnlockFails >= 5) { wkUnlockFails = 0; wkUnlockBlockedUntil = Date.now() + 30000; }
+      document.getElementById('wkUnlockPin').value = '';
+      showWkUnlockMsg('Wrong PIN — week stays locked.');
+      return;
+    }
+    wkUnlockFails = 0;
+    const locks = paidWeeksOverlapping(r.from, r.to);
+    const stamp = new Date().toISOString();
+    locks.forEach(w => {
+      paidWeekLog.push({ from: w.from, to: w.to, lockedAt: w.lockedAt, unlockedAt: stamp, reason });
+    });
+    const ids = new Set(locks.map(w => w.id));
+    paidWeeks = paidWeeks.filter(w => !ids.has(w.id));
+    savePaidWeeks();
+    savePaidWeekLog();
+    closeWeekUnlock();
+    refreshLockedViews();
+  }).catch(() => {
+    goBtn.disabled = false;
+    showWkUnlockMsg('Could not check the PIN. Try again.');
+  });
 }
 
 // ── WEEKLY REPORT STATS ─────────────────────────────────────────────────────────
@@ -3401,6 +3662,14 @@ function handleSave() {
   const paid  = parseFloat(document.getElementById('paid').value) || 0;
   const total = getTotal();
 
+  // Paid-week lock: no new entry on a locked date, and no editing an entry
+  // that currently sits on one (or moving one onto one).
+  if (editingEntryId !== null) {
+    const lockedOld = entries.find(e => e.id === editingEntryId) || historyEntries.find(e => e.id === editingEntryId);
+    if (lockedOld && blockIfLocked(lockedOld.date)) return;
+  }
+  if (blockIfLocked(date)) return;
+
   if (!plate && !brand) { showAlert('Enter at least a plate number or vehicle brand.', 'error'); return; }
   if (total === 0)       { showAlert('Add at least one service with an amount.', 'error'); return; }
 
@@ -3480,6 +3749,7 @@ function handleSave() {
 function editEntry(id) {
   const e = entries.find(x => x.id === id) || historyEntries.find(x => x.id === id);
   if (!e) return;
+  if (blockIfLocked(e.date)) return;
   editingEntryId = id;
 
   document.getElementById('entryDate').value = e.date;
