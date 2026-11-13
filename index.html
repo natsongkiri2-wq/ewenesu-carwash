@@ -1015,6 +1015,18 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
       <div id="weeklyVehicleSummary"></div>
     </div>
 
+    <!-- Activity log -->
+    <div class="card">
+      <div class="card-title">Activity Log</div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.4;margin-bottom:10px;">Every change made in the app — sales, payments, expenses, attendance & pay, team changes and paid weeks — newest first. This log can't be edited or cleared.</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+        <input class="input" id="activityLogDateInput" type="date" style="flex:1;" oninput="filterActivityLog(this.value)">
+        <button type="button" class="attendant-chip" id="activityLogClearBtn" onclick="filterActivityLog('')" style="white-space:nowrap;display:none;">Clear date</button>
+      </div>
+      <div id="activityLogList"></div>
+      <button type="button" class="attendant-chip hidden" id="activityLogMoreBtn" onclick="showMoreActivityLog()" style="margin-top:10px;width:100%;text-align:center;">Show more</button>
+    </div>
+
     <!-- Actions -->
     <div class="field">
       <label>Select Month to Download</label>
@@ -1269,6 +1281,9 @@ input[type="time"].input { font-family: 'DM Sans', sans-serif; }
 const STORAGE_KEY    = 'ewenesu_entries';
 const STAFF_KEY       = 'ewenesu_staff';
 const HIDDEN_STAFF_KEY = 'ewenesu_hidden_staff'; // attendants no longer working — kept on file, hidden from the daily list
+const ACTIVITY_LOG_KEY = 'ewenesu_activity_log'; // permanent record of every change made in the app; newest last
+const ACTIVITY_LOG_MAX = 3000;
+const ACTIVITY_ICONS = { sale: '🚗', payment: '💳', expense: '🧾', attendance: '👤', team: '👥', week: '🔒', settings: '⚙️', backup: '💾' };
 const STAFF_SALARY_KEY = 'ewenesu_attendant_salaries'; // each person's most-recent salary, reused as the default going forward
 const VEHICLE_PROFILE_KEY = 'ewenesu_vehicle_profiles'; // per-plate vehicle type/brand/model, reused as the default going forward
 const ATTENDANCE_KEY  = 'ewenesu_attendance'; // pending, cleared on monthly download
@@ -1351,6 +1366,9 @@ let editingEntryId = null;
 let staff = loadStaff();
 let hiddenStaff = loadHiddenStaff();
 let showHiddenStaff = false;
+let activityLog = loadActivityLog();
+let activityLogLimit = 20;
+let activityLogDate = '';
 let expenseCategories = loadExpenseCategories();
 let expenseCategoryAmounts = loadExpenseCategoryAmounts();
 let attendantSalaries = loadAttendantSalaries();
@@ -1401,6 +1419,7 @@ document.getElementById('expDate').value = todayStr();
 document.getElementById('downloadMonth').value = todayStr().slice(0, 7);
 document.getElementById('commissionRateInput').value = commissionRatePercent;
 setRangeThisWeek();
+renderActivityLog();
 
 // Default the Revenue tab's date picker to the last 7 days.
 (function initRevenueRangeDefaults() {
@@ -1487,6 +1506,81 @@ function loadHiddenStaff() {
 function saveHiddenStaff() {
   localStorage.setItem(HIDDEN_STAFF_KEY, JSON.stringify(hiddenStaff));
 }
+// ── ACTIVITY LOG ──────────────────────────────────────────────────────────────
+// Shape: [{ t: ms timestamp, cat, text, k?: merge key, from?: value before a run of edits }]
+function loadActivityLog() {
+  try { const l = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY)); return Array.isArray(l) ? l : []; }
+  catch (e) { return []; }
+}
+function saveActivityLog() {
+  if (activityLog.length > ACTIVITY_LOG_MAX) activityLog = activityLog.slice(-ACTIVITY_LOG_MAX);
+  // Logging must never get in the way of the change it's recording.
+  try { localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(activityLog)); } catch (e) {}
+}
+function fmtVT(n) { return 'VT ' + (Number(n) || 0).toLocaleString(); }
+function logActivity(cat, text) {
+  activityLog.push({ t: Date.now(), cat, text });
+  saveActivityLog();
+  renderActivityLog();
+}
+// For amount boxes that save on every keystroke: typing 1 → 16 → 160 → 1600
+// within two minutes becomes one line ("VT 0 → VT 1,600"), not four.
+function logAmountChange(cat, key, label, oldVal, newVal) {
+  const now = Date.now();
+  const last = activityLog[activityLog.length - 1];
+  if (last && last.k === key && now - last.t < 120000) {
+    if (Number(last.from) === Number(newVal)) activityLog.pop(); // typed back to where it started
+    else { last.t = now; last.text = `${label}: ${fmtVT(last.from)} → ${fmtVT(newVal)}`; }
+  } else {
+    if (Number(oldVal) === Number(newVal)) return;
+    activityLog.push({ t: now, cat, text: `${label}: ${fmtVT(oldVal)} → ${fmtVT(newVal)}`, k: key, from: Number(oldVal) || 0 });
+  }
+  saveActivityLog();
+  renderActivityLog();
+}
+function describeSale(e) {
+  const desc = [e.vehicle_type, e.brand, e.model].filter(Boolean).join(' ');
+  return `${e.plate || desc || 'vehicle'}, ${e.date}, ${fmtVT(e.total_services)}`;
+}
+function describeChanges(oldRec, newRec, fields) {
+  return fields
+    .filter(([key]) => String(oldRec[key] ?? '') !== String(newRec[key] ?? ''))
+    .map(([key, label, money]) => `${label} ${money ? fmtVT(oldRec[key]) : (oldRec[key] || '—')} → ${money ? fmtVT(newRec[key]) : (newRec[key] || '—')}`)
+    .join('; ');
+}
+function filterActivityLog(value) {
+  activityLogDate = value || '';
+  activityLogLimit = 20;
+  const input = document.getElementById('activityLogDateInput');
+  if (input && input.value !== activityLogDate) input.value = activityLogDate;
+  renderActivityLog();
+}
+function showMoreActivityLog() {
+  activityLogLimit += 50;
+  renderActivityLog();
+}
+function renderActivityLog() {
+  const list = document.getElementById('activityLogList');
+  if (!list) return;
+  let items = activityLog.slice().reverse();
+  if (activityLogDate) items = items.filter(a => toLocalDateStr(new Date(a.t)) === activityLogDate);
+  const shown = items.slice(0, activityLogLimit);
+  list.innerHTML = shown.length === 0
+    ? `<p style="font-size:13px;color:var(--text3);text-align:center;padding:12px 0;">${activityLogDate ? `No activity recorded on ${activityLogDate}.` : 'No activity recorded yet.'}</p>`
+    : shown.map(a => `
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text3);">${fmtLockStamp(a.t)}</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.4;">${ACTIVITY_ICONS[a.cat] || '•'} ${escHtml(a.text)}</div>
+      </div>`).join('');
+  const moreBtn = document.getElementById('activityLogMoreBtn');
+  if (moreBtn) {
+    moreBtn.classList.toggle('hidden', items.length <= activityLogLimit);
+    moreBtn.textContent = `Show more (${items.length - shown.length} older)`;
+  }
+  const clearBtn = document.getElementById('activityLogClearBtn');
+  if (clearBtn) clearBtn.style.display = activityLogDate ? '' : 'none';
+}
+
 function loadExpenseCategories() {
   try {
     const c = JSON.parse(localStorage.getItem(EXPENSE_CATEGORIES_KEY));
@@ -1533,8 +1627,10 @@ function saveCommissionRate() {
 }
 function updateCommissionRate(value) {
   const num = parseFloat(value);
+  const oldCommissionRate = commissionRatePercent;
   commissionRatePercent = (isNaN(num) || num < 0) ? 0 : num;
   saveCommissionRate();
+  if (oldCommissionRate !== commissionRatePercent) logActivity('settings', `Commission rate changed — ${oldCommissionRate}% → ${commissionRatePercent}%`);
   const input = document.getElementById('commissionRateInput');
   if (input) input.value = commissionRatePercent;
   renderRangeStats();
@@ -2070,6 +2166,7 @@ function applyAutoBonusToAll() {
   Object.keys(attendance[selectedAttDate]).forEach(name => {
     attendance[selectedAttDate][name].bonus = bonus;
   });
+  logActivity('attendance', `Auto bonus ${fmtVT(bonus)} applied to ${Object.keys(attendance[selectedAttDate]).length} attendant(s) on ${selectedAttDate}`);
   saveAttendance();
   mirrorAttendanceDateToHistory(selectedAttDate);
   commitHistory();
@@ -2083,6 +2180,8 @@ function toggleAttendance(name) {
   if (blockIfLocked(selectedAttDate)) return;
   if (!attendance[selectedAttDate]) attendance[selectedAttDate] = {};
   if (attendance[selectedAttDate][name]) {
+    const wasRec = attendance[selectedAttDate][name];
+    logActivity('attendance', `${name} marked absent on ${selectedAttDate} (was salary ${fmtVT(wasRec.salary)}, bonus ${fmtVT(wasRec.bonus)})`);
     delete attendance[selectedAttDate][name];
     if (Object.keys(attendance[selectedAttDate]).length === 0) delete attendance[selectedAttDate];
   } else {
@@ -2091,6 +2190,8 @@ function toggleAttendance(name) {
       salary: attendantSalaries[name] || 0,
       bonus: computeAutoBonus(selectedAttDate)
     };
+    const nowRec = attendance[selectedAttDate][name];
+    logActivity('attendance', `${name} marked present on ${selectedAttDate} (salary ${fmtVT(nowRec.salary)}, bonus ${fmtVT(nowRec.bonus)})`);
   }
   saveAttendance();
   mirrorAttendanceDateToHistory(selectedAttDate);
@@ -2106,7 +2207,9 @@ function updateAttPay(name, field, value) {
   if (!attendance[selectedAttDate] || !attendance[selectedAttDate][name]) return;
   const num = parseFloat(value);
   const clean = isNaN(num) ? 0 : num;
+  const oldPay = attendance[selectedAttDate][name][field];
   attendance[selectedAttDate][name][field] = clean;
+  logAmountChange('attendance', `att:${selectedAttDate}:${name}:${field}`, `${name} ${field} on ${selectedAttDate}`, oldPay, clean);
   if (field === 'salary') {
     // Whatever salary gets entered here becomes this person's standing
     // default — it'll auto-fill next time they're marked present, on any
@@ -2131,10 +2234,12 @@ function addAttendant() {
   if (!staff.includes(trimmed)) {
     staff.push(trimmed);
     saveStaff();
+    logActivity('team', `Attendant added — ${trimmed}`);
   }
   if (hiddenStaff.includes(trimmed)) {
     hiddenStaff = hiddenStaff.filter(n => n !== trimmed);
     saveHiddenStaff();
+    logActivity('team', `Attendant unhidden (re-added) — ${trimmed}`);
   }
   // On a locked (paid) date the new person joins the team but isn't marked
   // present — that date's pay is already settled.
@@ -2163,6 +2268,7 @@ function hideAttendant(name) {
   if (hiddenStaff.includes(name)) return;
   hiddenStaff.push(name);
   saveHiddenStaff();
+  logActivity('team', `Attendant hidden (no longer working) — ${name}`);
   renderAttRows();
   const stillShown = attendance[selectedAttDate] && attendance[selectedAttDate][name];
   showAttAlert(stillShown
@@ -2173,6 +2279,7 @@ function unhideAttendant(name) {
   hiddenStaff = hiddenStaff.filter(n => n !== name);
   saveHiddenStaff();
   renderAttRows();
+  logActivity('team', `Attendant unhidden (back at work) — ${name}`);
   showAttAlert(`✓ ${name} is back on the list.`, 'success');
 }
 function toggleHiddenStaffList() {
@@ -2237,6 +2344,7 @@ function renameAttendant(oldName) {
   }
   renameIn(attendance);
   renameIn(historyAttendance);
+  logActivity('team', `Attendant renamed — ${oldName} → ${newName}`);
   saveAttendance();
   commitHistory();
   renderAttRows();
@@ -2249,6 +2357,7 @@ function removeAttendant(name) {
   if (!confirm(`Remove ${name} from your team? This deletes them from staff and clears their attendance records for this period.`)) return;
   staff = staff.filter(s => s !== name);
   saveStaff();
+  logActivity('team', `Attendant removed — ${name}`);
   if (hiddenStaff.includes(name)) {
     hiddenStaff = hiddenStaff.filter(n => n !== name);
     saveHiddenStaff();
@@ -2429,6 +2538,7 @@ function toggleQuickExpense(cat) {
     saveExpenses();
     removeExpenseHistory(existing.id);
     commitHistory();
+    logActivity('expense', `Expense removed — ${existing.category}, ${existing.date}, ${fmtVT(existing.amount)}`);
     if (editingExpenseId === existing.id) cancelEditExpense();
     showExpQuickAlert('Expense removed', 'info');
   } else {
@@ -2444,6 +2554,7 @@ function toggleQuickExpense(cat) {
     saveExpenses();
     upsertExpenseHistory(expense);
     commitHistory();
+    logActivity('expense', `Expense added — ${expense.category}, ${expense.date}, ${fmtVT(expense.amount)}`);
     showExpQuickAlert('✓ Expense saved!', 'success');
   }
   renderExpenseQuickRows();
@@ -2458,7 +2569,9 @@ function updateQuickExpenseAmount(cat, value) {
   if (!existing) return;
   const num = parseFloat(value);
   const clean = isNaN(num) ? 0 : num;
+  const oldQuickAmount = existing.amount;
   existing.amount = clean;
+  logAmountChange('expense', `exp:${existing.id}`, `Expense amount — ${cat}, ${date}`, oldQuickAmount, clean);
   // Whatever amount gets entered here becomes this category's standing
   // default — it'll auto-fill next time it's quick-added, on any date,
   // until it's changed again.
@@ -2557,6 +2670,7 @@ function handleSaveExpense() {
     // Same reasoning as sales entries: an expense that predates the
     // always-keep-pending behavior can be history-only. Editing it brings
     // it back into the pending list instead of silently failing to save.
+    const expBefore = idx !== -1 ? { ...expenses[idx] } : historyExpenses.find(e => e.id === editingExpenseId);
     let updated = null;
     if (idx !== -1) {
       updated = { ...expenses[idx], date, category, amount, notes };
@@ -2572,6 +2686,9 @@ function handleSaveExpense() {
       saveExpenses();
       upsertExpenseHistory(updated);
       commitHistory();
+      logActivity('expense', `Expense edited — ${expBefore.category}, ${expBefore.date}: ` + (describeChanges(expBefore, updated, [
+        ['date', 'date'], ['category', 'category'], ['amount', 'amount', true], ['notes', 'notes']
+      ]) || 'no change'));
     }
     renderExpenseList();
     renderExpenseQuickRows();
@@ -2587,6 +2704,7 @@ function handleSaveExpense() {
   saveExpenses();
   upsertExpenseHistory(expense);
   commitHistory();
+  logActivity('expense', `Expense added — ${expense.category}, ${expense.date}, ${fmtVT(expense.amount)}`);
   renderExpenseList();
   renderExpenseQuickRows();
   updateExpenseWeekTotal();
@@ -2640,6 +2758,7 @@ function deleteExpense(id) {
   saveExpenses();
   removeExpenseHistory(id);
   commitHistory();
+  logActivity('expense', `Expense deleted — ${removed.category}, ${removed.date}, ${fmtVT(removed.amount)}`);
   if (editingExpenseId === id) cancelEditExpense();
   renderExpenseList();
   renderExpenseQuickRows();
@@ -2652,6 +2771,7 @@ function deleteExpense(id) {
     saveExpenses();
     upsertExpenseHistory(removed);
     commitHistory();
+    logActivity('expense', `Expense restored (undo delete) — ${removed.category}, ${removed.date}, ${fmtVT(removed.amount)}`);
     renderExpenseList();
     renderExpenseQuickRows();
     updateExpenseWeekTotal();
@@ -2937,6 +3057,7 @@ function deleteEntry(id) {
   saveRevenueLog();
   removeEntryHistory(id);
   commitHistory();
+  logActivity('sale', `Sale deleted — ${describeSale(removed)}`);
   if (editingEntryId === id) cancelEditEntry();
   refreshAll();
   if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
@@ -2949,6 +3070,7 @@ function deleteEntry(id) {
     saveRevenueLog();
     upsertEntryHistory(removed);
     commitHistory();
+    logActivity('sale', `Sale restored (undo delete) — ${describeSale(removed)}`);
     refreshAll();
     if (document.getElementById('viewRevenue').classList.contains('active')) renderRevenueTab();
   });
@@ -2978,6 +3100,7 @@ function applyPayment(id) {
   saveEntries();
   commitHistory();
 
+  logActivity('payment', `Payment ${fmtVT(amount)} recorded — ${describeSale(source)} (paid so far ${fmtVT(newPaid)})`);
   if (revenueLog[source.date]) {
     revenueLog[source.date].paid = (revenueLog[source.date].paid || 0) + amount;
     saveRevenueLog();
@@ -3256,6 +3379,7 @@ function handleMarkWeekPaid() {
     totals: t
   });
   savePaidWeeks();
+  logActivity('week', `Week marked ALL PAID and locked — ${r.from} → ${r.to} (sales ${fmtVT(t.sales)}, salaries + bonus ${fmtVT(t.salaries)}, net ${fmtVT(t.net)})`);
   refreshLockedViews();
 }
 
@@ -3315,6 +3439,7 @@ function confirmWeekUnlock() {
     paidWeeks = paidWeeks.filter(w => !ids.has(w.id));
     savePaidWeeks();
     savePaidWeekLog();
+    locks.forEach(w => logActivity('week', `Paid week reopened for editing — ${w.from} → ${w.to}. Reason: ${reason}`));
     closeWeekUnlock();
     refreshLockedViews();
   }).catch(() => {
@@ -3826,6 +3951,10 @@ function handleSave() {
       saveRevenueLog();
       upsertEntryHistory(updated);
       commitHistory();
+      logActivity('sale', `Sale edited — ${describeSale(oldEntry)}: ` + (describeChanges(oldEntry, updated, [
+        ['date', 'date'], ['plate', 'plate'], ['total_services', 'total', true], ['paid', 'paid', true],
+        ['vehicle_type', 'type'], ['brand', 'brand'], ['model', 'model'], ['time', 'time'], ['notes', 'notes']
+      ]) || 'service breakdown changed, total the same'));
       if (plate && (vehicleType || brand || model)) {
         vehicleProfiles[plate] = { vehicle_type: vehicleType, brand, model };
         saveVehicleProfiles();
@@ -3851,6 +3980,7 @@ function handleSave() {
   saveRevenueLog();
   upsertEntryHistory(entry);
   commitHistory();
+  logActivity('sale', `Sale added — ${describeSale(entry)}` + (entry.paid ? `, paid ${fmtVT(entry.paid)}` : ''));
   if (plate && (vehicleType || brand || model)) {
     vehicleProfiles[plate] = { vehicle_type: vehicleType, brand, model };
     saveVehicleProfiles();
@@ -3968,6 +4098,7 @@ function exportBackup() {
   URL.revokeObjectURL(url);
 
   localStorage.setItem(LAST_BACKUP_KEY, new Date().toISOString());
+  logActivity('backup', 'Full backup exported');
   checkBackupReminder();
 }
 
@@ -4006,6 +4137,10 @@ function handleImportBackup(event) {
     Object.entries(data).forEach(([key, value]) => {
       if (key.startsWith('ewenesu_')) localStorage.setItem(key, value);
     });
+    // The backup's own activity log just replaced this device's — note the import on top of it.
+    activityLog = loadActivityLog();
+    activityLog.push({ t: Date.now(), cat: 'backup', text: `Backup imported (exported ${when}) — replaced all data on this device` });
+    saveActivityLog();
 
     alert('Import complete! The app will now reload with the transferred data.');
     location.reload();

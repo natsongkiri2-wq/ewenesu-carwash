@@ -2,7 +2,7 @@
 // worker itself has changed and go through install/activate again — without
 // it, edits to index.html alone can get stuck being served from a stale
 // cache indefinitely, since browsers only re-check the SW file byte-for-byte.
-const CACHE_NAME = 'ewenesu-carwash-v9';
+const CACHE_NAME = 'ewenesu-carwash-v10';
 const ASSETS = [
   './',
   './index.html',
